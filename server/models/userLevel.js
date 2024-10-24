@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');  // Ensure this path is correct
 
 const userLevel = sequelize.define('userLevel', {
