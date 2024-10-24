@@ -1,7 +1,7 @@
 const mysql = require('mysql2');
 
 // Create a connection pool
-const pool = mysql.createPool({
+const sequelize = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -12,4 +12,4 @@ const pool = mysql.createPool({
 });
 
 // Export the pool for use in your routes
-module.exports = pool;
+module.exports = sequelize;
