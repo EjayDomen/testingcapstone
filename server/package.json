@@ -3,14 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
-  "scripts": {
-    "test": "jest",
-    "test-specific": "jest queueManagement.test.js",
-    "start:server": "node app.js",
-    "start:client": "cd ../client && npm install && npm run build",
-    "dev": "nodemon app.js",
-    "start": "npm start --server"
-  },
+    "scripts": {
+      "start": "npm run start:server",
+      "start:server": "node server.js"
+    }
+
+  ,
   "proxy": "http://localhost:5000",
   "keywords": [],
   "author": "",
