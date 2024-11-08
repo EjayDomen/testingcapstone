@@ -1,12 +1,17 @@
 const express = require('express');
-const sequelize = require('../../config/database'); // Import the Sequelize instance
+const sequelize = require('../../config/database');
 const Appointment = require('../../models/appointment');
-const QueueManagement = require('../../models/queueManagement');
 const Queue = require('../../models/queue');
+const QueueManagement = require('../../models/queueManagement');
 const Schedule = require('../../models/schedule');
-const Doctor = require('../../models/doctor'); // Import the Doctor model
+const Doctor = require('../../models/doctor');
+const Secretary = require('../../models/secretary');
 const auth = require('../../middleware/auth');
 const router = express.Router();
+const cron = require('node-cron'); // Import the cron library
+const { Op } = require('sequelize');
+const { formatInTimeZone } = require('date-fns-tz');
+
 
 
 router.get('/queue', auth('Patient'), async (req, res) => {
@@ -125,5 +130,153 @@ router.get('/queue', auth('Patient'), async (req, res) => {
     }
 });
 
+const getQueueForAppointment = async (patientId) => {
+  try {
+    // Get the current date and time in Manila time (UTC+8) using date-fns-tz
+    const timeZone = 'Asia/Manila';
+    const currentDateString = formatInTimeZone(new Date(), timeZone, 'yyyy-MM-dd'); // Today's date in Manila
+    const currentTimeString = formatInTimeZone(new Date(), timeZone, 'HH:mm:ss'); // Current time in Manila
+
+    // Fetch upcoming appointments for the patient, ordered by date and time
+    const appointments = await Appointment.findAll({
+      where: {
+        PATIENT_ID: patientId,
+        APPOINTMENT_DATE: {
+          [Op.gte]: new Date(), // Only fetch future or today's appointments
+        },
+      },
+      include: [
+        {
+          model: Doctor,
+          attributes: ['FIRST_NAME', 'LAST_NAME', 'ID'],
+          include: [
+            {
+              model: Secretary, // Assuming Secretary is associated with Doctor
+              as: 'secretary',
+              attributes: ['DEPARTMENT', 'FLOOR_NUMBER', 'ROOM_NUMBER'],
+            },
+          ],
+        },
+      ],
+      order: [['APPOINTMENT_DATE', 'ASC'], ['APPOINTMENT_TIME', 'ASC']],
+      attributes: ['id', 'APPOINTMENT_DATE', 'APPOINTMENT_TIME', 'SCHEDULE_ID'],
+    });
+
+    if (appointments.length === 0) {
+      console.log('No upcoming appointments found for the patient.');
+      return { queues: [], patientQueueNumber: 'N/A' };
+    }
+
+    let allQueues = [];
+    let patientQueueNumber = 'N/A';
+
+    // Loop through each appointment to get the queues associated with their schedule and time
+    for (const appointment of appointments) {
+      // Fetch active QueueManagement entry based on schedule, date, and time conditions in Manila time
+      const queueMan = await QueueManagement.findOne({
+        where: {
+          SCHEDULE_ID: appointment.SCHEDULE_ID,
+          DATE: currentDateString, // Ensure it's today in Manila time
+        },
+      });
+
+      if (!queueMan) {
+        continue; // Skip if no QueueManagement entry matches the criteria
+      }
+
+      // Fetch queues associated with the QueueManagement entry
+      const queues = await Queue.findAll({
+        where: { QUEUE_MANAGEMENT_ID: queueMan.id },
+        order: [['QUEUE_NUMBER', 'ASC']],
+      });
+
+      // Identify the patient's queue number
+      const patientQueue = queues.find(queue => queue.APPOINTMENT_ID === appointment.id);
+      patientQueueNumber = patientQueue ? patientQueue.QUEUE_NUMBER : 'N/A';
+
+      // Fetch department, floor, and room number from the doctor's secretary (assumed to be in the Secretary model)
+      const doctor = appointment.Doctor;
+      const secretary = doctor?.secretary; // Assuming each doctor has a secretary with location details
+      const department = secretary.DEPARTMENT || 'N/A';
+      const floor = secretary?.FLOOR_NUMBER || 'N/A';
+      const roomNumber = secretary?.ROOM_NUMBER || 'N/A';
+
+      // Format queue data for display
+      const formattedQueues = queues.map(queue => ({
+        queueNumber: queue.QUEUE_NUMBER,
+        queueStatus: queue.STATUS,
+        appointmentDate: appointment.APPOINTMENT_DATE,
+        appointmentTime: appointment.APPOINTMENT_TIME,
+        patientId: patientId,
+        department,
+        floor,
+        roomNumber,
+      }));
+
+      // Aggregate all relevant queues
+      allQueues = allQueues.concat(formattedQueues);
+    }
+
+    return { queues: allQueues, patientQueueNumber };
+
+  } catch (error) {
+    console.error('Error fetching queue:', error);
+    return { queues: [], patientQueueNumber: 'N/A' };
+  }
+};
+
+
+
+  
+  // Array to store logged-in patient IDs
+let loggedInPatientIds = new Set();
+
+// Middleware to add the logged-in patient ID to the array
+router.use(auth('Patient'), (req, res, next) => {
+  const patientId = req.user.id;
+  if (patientId) {
+    loggedInPatientIds.add(patientId); // Add the logged-in patient ID
+  }
+  next();
+});
+
+// Cron job to check every minute if there's a queue list to display for logged-in patients
+cron.schedule('* * * * *', async () => {
+  console.log('Checking for queues to display for logged-in patients...');
+
+  for (const patientId of loggedInPatientIds) {
+    try {
+      const { queues, patientQueueNumber } = await getQueueForAppointment(patientId);
+      
+
+      if (queues.length > 0) {
+        console.log(`Queue list for patient ID ${patientId}:`, queues);
+        console.log(`Patient Queue Number: ${patientQueueNumber}`);
+      } else {
+        console.log(`No queue to display for patient ID ${patientId}.`);
+      }
+    } catch (error) {
+      console.error(`Error checking queue for patient ID ${patientId}:`, error);
+    }
+  }
+});
+
+  
+  // API route for fetching the queue list based on the logged-in patient's appointment
+  router.get('/current-queue', auth('Patient'), async (req, res) => {
+    const patientId = req.user.id;
+  
+    try {
+      const { queues, patientQueueNumber } = await getQueueForAppointment(patientId);
+      if (queues.length === 0) {
+        return res.status(404).json({ message: 'No current queue available.' });
+      }
+      res.status(200).json({ queues, patientQueueNumber });
+    } catch (error) {
+      console.error('Error fetching current queue:', error);
+      res.status(500).json({ message: 'Error fetching current queue', error });
+    }
+  });
+  
 
 module.exports= router;

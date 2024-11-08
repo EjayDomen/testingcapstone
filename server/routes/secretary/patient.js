@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/', auth('Secretary'), async (req, res)=> {
 
     try{
-        const patient = await Patient.findAll();
+        const patient = await Patient.findAll({where: {is_deleted: false}});
         res.status(200).json(patient);
     } catch (error){
         res.status(400).json({error: error.message});
@@ -97,5 +97,88 @@ router.get('/secretary/patients-attended/monthly', async (req, res) => {
     }
   });
   
+// Endpoint to update patient information, excluding email and password
+router.put('/update/:id', auth('Secretary'), async (req, res) => {
+  const { id } = req.params;
+  const {
+      FIRST_NAME,
+      MIDDLE_NAME,
+      LAST_NAME,
+      EMAIL,
+      CONTACT_NUMBER,
+      ADDRESS,
+      SEX,
+      AGE,
+      BIRTHDAY,
+      USER_LEVEL_ID,
+      VERIFIED,
+      FIRST_DOSE_BRAND,
+      SECOND_DOSE_BRAND,
+      BOOSTER_BRAND,
+      FIRST_DOSE_DATE,
+      SECOND_DOSE_DATE,
+      BOOSTER_DATE
+  } = req.body;
+
+  try {
+      // Fetch the patient by ID
+      const patient = await Patient.findByPk(id);
+      
+      if (!patient) {
+          return res.status(404).json({ message: 'Patient not found' });
+      }
+
+      // Update patient details, excluding email and password
+      await patient.update({
+          FIRST_NAME,
+          MIDDLE_NAME,
+          LAST_NAME,
+          EMAIL,
+          CONTACT_NUMBER,
+          ADDRESS,
+          SEX,
+          AGE,
+          BIRTHDAY,
+          USER_LEVEL_ID,
+          VERIFIED,
+          FIRST_DOSE_BRAND,
+          SECOND_DOSE_BRAND,
+          BOOSTER_BRAND,
+          FIRST_DOSE_DATE,
+          SECOND_DOSE_DATE,
+          BOOSTER_DATE
+      });
+
+      res.status(200).json({ message: 'Patient information updated successfully', patient });
+  } catch (error) {
+      console.error('Error updating patient information:', error);
+      res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Soft delete endpoint for a patient
+router.delete('/delete/:id', auth('Secretary'), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the patient by ID
+    const patient = await Patient.findByPk(id);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // Perform a soft delete by setting is_deleted to true
+    await patient.update({ is_deleted: true });
+
+    res.status(200).json({ message: 'Patient has been soft-deleted successfully' });
+  } catch (error) {
+    console.error('Error soft-deleting patient:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+
 
 module.exports = router;

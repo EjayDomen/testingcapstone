@@ -5,48 +5,60 @@ const patient = require('./patient');
 const schedule = require('./schedule');
 const doctor = require('./doctor');
 
-const Appointment = sequelize.define('appointments', {
-    FIRST_NAME:{
+const Appointment = sequelize.define('Appointment', {
+    FIRST_NAME: {
         type: DataTypes.STRING,
         allowNull: false
     },
-    MIDDLE_NAME:{
+    MIDDLE_NAME: {
         type: DataTypes.STRING,
         allowNull: true
     },
-    LAST_NAME:{
+    LAST_NAME: {
         type: DataTypes.STRING,
         allowNull: false
     },
-    AGE:{
-        type: DataTypes.INTEGER,
-        allowNull:false
+    SUFFIX: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    AGE: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    ADDRESS: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    SEX: {
+        type: DataTypes.STRING,
+        allowNull: false
     },
     APPOINTMENT_TIME: {  // Corrected typo from AppoinmentTime to AppointmentTime
         type: DataTypes.STRING,
         allowNull: false,
     },
-    APPOINTMENT_DATE:{
+    APPOINTMENT_DATE: {
         type: DataTypes.DATEONLY,
         allowNull: false
     },
     REASON: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     CONTACT_NUMBER: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
     TYPE: {
         type: DataTypes.STRING,
         defaultValue: false
     },
-    STATUS:{
-        type:DataTypes.STRING,
+    STATUS: {
+        type: DataTypes.STRING,
         allowNull: false
     },
-    SCHEDULE_ID:{
+    SCHEDULE_ID: {
         type: DataTypes.INTEGER,
         allowNull: false
     }
@@ -65,30 +77,30 @@ Appointment.belongsTo(secretary, {
     }
 });
 
-Appointment.belongsTo(schedule,{
-    foreignKey:{
-        name: 'SCHEDULE_ID',
-        allowNull:false
-    }
-});
-schedule.hasMany(Appointment,{
+Appointment.belongsTo(schedule, {
     foreignKey: {
         name: 'SCHEDULE_ID',
-        allowNull:false
+        allowNull: false
+    }
+});
+schedule.hasMany(Appointment, {
+    foreignKey: {
+        name: 'SCHEDULE_ID',
+        allowNull: false
     }
 });
 
 
-Appointment.belongsTo(doctor,{
+Appointment.belongsTo(doctor, {
     foreignKey: {
         name: 'DOCTOR_ID',
-        allowNull:false
+        allowNull: false
     }
 });
-doctor.hasMany(Appointment,{
+doctor.hasMany(Appointment, {
     foreignKey: {
         name: 'DOCTOR_ID',
-        allowNull:false
+        allowNull: false
     }
 });
 

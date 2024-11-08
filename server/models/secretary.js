@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const userLevel = require('./userLevel');
 
-const secretary = sequelize.define('secretaries', {
+const secretary = sequelize.define('secretary', {
     FIRST_NAME: {
         type: DataTypes.STRING,
         allowNull: false
@@ -43,8 +43,12 @@ const secretary = sequelize.define('secretaries', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    SCHEDULE: {  // Changed to PascalCase to match other fields
-        type: DataTypes.STRING,
+    START_TIME: {
+        type: DataTypes.TIME,
+        allowNull: false
+    },
+    END_TIME: {
+        type: DataTypes.TIME,
         allowNull: false
     },
     ROOM_NUMBER: {

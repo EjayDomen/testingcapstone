@@ -34,6 +34,10 @@ const Notification = sequelize.define('notifications', {
     type: DataTypes.INTEGER,
     allowNull: true, // Make it nullable if necessary
   },
+  TYPE: {
+    type: DataTypes.STRING,
+    allowNull: true, // Make it nullable if necessary
+  },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

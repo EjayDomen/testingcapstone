@@ -7,14 +7,19 @@ const router = express.Router();
 const Schedule = require('../../models/schedule');
 
 
-
 // view all doctor
 router.get('/', auth('Patient'), async (req, res) => {
-    try{
-        const doctor = await Doctors.findAll();
-        res.status(200).json(doctor);
-    } catch(error){
-        res.status(400).json({error: error.message});
+    try {
+        const doctors = await Doctors.findAll({
+            where:{ is_deleted: false},
+            include: [{
+                model: Schedule, // Assuming 'Schedules' is the model associated with Doctors
+                attributes: ['DAY_OF_WEEK', 'START_TIME', 'END_TIME'] // Specify schedule fields to include
+            }]
+        });
+        res.status(200).json(doctors);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -41,6 +46,7 @@ router.get('/:doctorId', async (req, res) => {
         res.status(200).json({
             secretaryId: doctor.SECRETARY_ID,
             firstName: doctor.FIRST_NAME,
+            middleName: doctor.MIDDLE_NAME,
             lastName: doctor.LAST_NAME
         });
     } catch (error) {
@@ -75,7 +81,7 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
     try {
         // Find schedules associated with the specified doctor
         const schedules = await Schedule.findAll({
-            where: { DOCTOR_ID: doctorId },
+            where: { DOCTOR_ID: doctorId, is_deleted: false },
             include: [
                 {
                     model: Doctors,
@@ -110,7 +116,7 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
                 start_time: schedule.START_TIME,
                 end_time: schedule.END_TIME,
                 slot_count: schedule.SLOT_COUNT,
-                title: `Dr. ${schedule.Doctor.FIRST_NAME} ${schedule.Doctor.LAST_NAME}`,
+                title: `Dr. ${schedule.Doctor.LAST_NAME}`,
                 expertise: schedule.Doctor.EXPERTISE,
                 HPA: schedule.Doctor.HEALTH_PROFESSIONAL_ACRONYM,
             };

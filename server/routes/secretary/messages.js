@@ -1,38 +1,46 @@
 const express = require('express');
 const sequelize = require('../../config/database'); // Adjust the path based on your structure
-const { Sequelize } = require('sequelize');
+const { Sequelize, Op } = require('sequelize');
 const Message = require('../../models/message');
 const Patient = require('../../models/patient');
 const auth = require('../../middleware/auth');
 const router = express.Router();
 
 // Get all conversations for the secretary
+// Get all conversations for the secretary
 router.get('/conversations', auth('Secretary'), async (req, res) => {
   try {
-    // Fetch messages where the receiver is a secretary
-    const messages = await Message.findAll({
+    // Step 1: Get the latest message ID for each sender_id (patient)
+    const latestMessageIds = await Message.findAll({
       where: { receiver_type: 'secretary' },
       attributes: [
-        'sender_id',
-        'content',
-        [Sequelize.fn('MAX', Sequelize.col('timestamp')), 'lastTimestamp']
+        [Sequelize.fn('MAX', Sequelize.col('id')), 'id'],
       ],
       group: ['sender_id'],
-      order: [[Sequelize.literal('lastTimestamp'), 'DESC']],
+      raw: true,
+    });
+
+    // Extract message IDs
+    const messageIds = latestMessageIds.map(msg => msg.id);
+
+    // Step 2: Retrieve the messages with those IDs
+    const messages = await Message.findAll({
+      where: { id: { [Op.in]: messageIds } },
+      attributes: ['sender_id', 'content', 'timestamp'],
       raw: true,
     });
 
     // Extract patient IDs
     const patientIds = messages.map(msg => msg.sender_id);
 
-    // Fetch patient details using the patient IDs
+    // Fetch patient details
     const patients = await Patient.findAll({
       where: { id: patientIds },
       attributes: ['id', 'FIRST_NAME', 'LAST_NAME'],
       raw: true,
     });
 
-    // Create a map of patients by ID for quick lookup
+    // Map patients by ID for quick lookup
     const patientMap = patients.reduce((acc, patient) => {
       acc[patient.id] = patient;
       return acc;
@@ -45,7 +53,7 @@ router.get('/conversations', auth('Secretary'), async (req, res) => {
         patientId: msg.sender_id,
         patientName: `${patient.FIRST_NAME} ${patient.LAST_NAME}`,
         lastMessage: msg.content,
-        timestamp: msg.lastTimestamp,
+        timestamp: msg.timestamp,
       };
     });
 
@@ -57,11 +65,18 @@ router.get('/conversations', auth('Secretary'), async (req, res) => {
 });
 
 
+
+// Get messages for a specific patient
 // Get messages for a specific patient
 router.get('/:patientId', auth('Secretary'), async (req, res) => {
   try {
     const messages = await Message.findAll({
-      where: { sender_id: req.params.patientId },
+      where: {
+        [Op.or]: [
+          { sender_id: req.params.patientId },  // Check if patient is the sender
+          { receiver_id: req.params.patientId }, // Check if patient is the receiver
+        ],
+      },
       order: [['timestamp', 'ASC']],
     });
 
@@ -71,6 +86,7 @@ router.get('/:patientId', auth('Secretary'), async (req, res) => {
     res.status(500).json({ message: 'Error fetching messages' });
   }
 });
+
 
 // Send a new message from the secretary
 router.post('/sendMessage', auth('Secretary'), async (req, res) => {

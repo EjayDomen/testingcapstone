@@ -8,7 +8,8 @@ router.get('/', async (req, res) => {
   try {
     // Fetch unread notifications ordered by latest
     const notifications = await Notification.findAll({
-      where: { status: 'unread' },
+      where: { 
+          USER_TYPE:'Secretary' },
       order: [['createdAt', 'DESC']], // Order by the latest notifications
     });
 
@@ -29,7 +30,7 @@ router.post('/:id/read', async (req, res) => {
     }
 
     // Update notification status to 'read'
-    notification.status = 'read';
+    notification.STATUS = 'read';
     await notification.save();
 
     res.status(200).json({ message: 'Notification marked as read' });
@@ -38,5 +39,25 @@ router.post('/:id/read', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// Delete a notification
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const notification = await Notification.findByPk(id);
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    // Delete the notification
+    await notification.destroy();
+
+    res.status(200).json({ message: 'Notification deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 module.exports = router;

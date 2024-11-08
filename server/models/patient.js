@@ -2,8 +2,8 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const userLevel = require('./userLevel');
 
-const patient = sequelize.define('patients', {
-    id:{
+const patient = sequelize.define('patient', {
+    id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
         primaryKey: true
@@ -20,6 +20,10 @@ const patient = sequelize.define('patients', {
         type: DataTypes.STRING,
         allowNull: false
     },
+    SUFFIX: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     EMAIL: {
         type: DataTypes.STRING,
         allowNull: false
@@ -34,6 +38,10 @@ const patient = sequelize.define('patients', {
         allowNull: false,
     },
     SEX: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    CIVIL_STATUS: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true
@@ -87,6 +95,10 @@ const patient = sequelize.define('patients', {
     BOOSTER_DATE: {
         type: DataTypes.DATE,
         allowNull: false,
+    },
+    is_deleted: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
     }
 });
 

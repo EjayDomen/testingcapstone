@@ -12,10 +12,13 @@ const router = express.Router();
 router.post('/patientregister', async (req, res) => {
     const {
         FIRST_NAME,
+        MIDDLE_NAME,
         LAST_NAME,
+        SUFFIX,
         EMAIL,
         CONTACT_NUMBER,
         PASSWORD,
+        CIVIL_STATUS,
     } = req.body;
 
     try {
@@ -36,13 +39,15 @@ router.post('/patientregister', async (req, res) => {
         const hashedPassword = await bcrypt.hash(PASSWORD, 10);
         const newPatient = await patient.create({
             FIRST_NAME,
-            MIDDLE_NAME: '',
+            MIDDLE_NAME,
             LAST_NAME,
+            SUFFIX,
             EMAIL,
             CONTACT_NUMBER,
             ADDRESS: '',
             SEX: '',
             BIRTHDAY: '',
+            CIVIL_STATUS: '',
             AGE: '',
             USER_LEVEL_ID: '3',
             PASSWORD: hashedPassword,
@@ -66,25 +71,32 @@ router.post('/patientregister', async (req, res) => {
 
 // Check if a Patient Exists Route
 router.post('/check-patient', async (req, res) => {
-    const { EMAIL, CONTACT_NUMBER } = req.body;
+    const { FIRST_NAME, MIDDLE_NAME, LAST_NAME, EMAIL } = req.body;
 
     try {
-        // Check if a patient with the same email or contact number already exists
+        // Check if a patient with the same FIRST_NAME, LAST_NAME, BIRTHDAY, or EMAIL already exists
         const existingPatient = await patient.findOne({
             where: {
                 [Op.or]: [
-                    { EMAIL },
-                    { CONTACT_NUMBER }
+                    {
+                        [Op.and]: [
+                            { FIRST_NAME },
+                            { MIDDLE_NAME },
+                            { LAST_NAME }
+                        ]
+                    },
+
+                    { EMAIL }
                 ]
             }
         });
 
         if (existingPatient) {
-            return res.status(409).json({ error: 'A patient with this email or contact number already exists.' });
+            return res.status(409).json({ error: 'A patient with this name, birthday, or email already exists.' });
         }
 
         // If no patient is found
-        res.status(200).json({ message: 'No existing patient with this email or contact number.' });
+        res.status(200).json({ message: 'No existing patient with this name, birthday, or email.' });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while checking the patient.' });
         console.log('Error:', error.message);
@@ -92,28 +104,33 @@ router.post('/check-patient', async (req, res) => {
 });
 
 // Update Patient Details Route
-router.put('/update', auth('Patient'), async (req, res) => {
-    const { FIRST_NAME, LAST_NAME, MIDDLE_NAME, ADDRESS, SEX, BIRTHDAY, AGE, CONTACT_NUMBER, FIRST_DOSE_BRAND, SECOND_DOSE_BRAND, BOOSTER_BRAND, FIRST_DOSE_DATE, SECOND_DOSE_DATE, BOOSTER_DATE } = req.body;
+router.put('/patient/update', auth('Patient'), async (req, res) => {
+    const { firstName, lastName, middleName, suffix, address, gender, dateOfBirth,
+        age, contactNumber, civilStatus, firstDoseBrand, secondDoseBrand,
+        boosterBrand, firstDoseDate, secondDoseDate, boosterDate, email, password } = req.body;
 
     try {
+        // const hashedPassword = await bcrypt.hash(password, 10);
         const Patient = await patient.findOne({ where: { id: req.user.id } });
         if (!Patient) {
             return res.status(404).json({ error: 'Patient not found' });
         }
-        Patient.FIRST_NAME = FIRST_NAME;
-        Patient.LAST_NAME = LAST_NAME;
-        Patient.MIDDLE_NAME = MIDDLE_NAME;
-        Patient.ADDRESS = ADDRESS;
-        Patient.SEX = SEX;
-        Patient.BIRTHDAY = BIRTHDAY;
-        Patient.AGE = AGE;
-        Patient.CONTACT_NUMBER = CONTACT_NUMBER;
-        Patient.FIRST_DOSE_BRAND = FIRST_DOSE_BRAND;
-        Patient.SECOND_DOSE_BRAND = SECOND_DOSE_BRAND;
-        Patient.BOOSTER_BRAND = BOOSTER_BRAND;
-        Patient.FIRST_DOSE_DATE = FIRST_DOSE_DATE;
-        Patient.SECOND_DOSE_DATE = SECOND_DOSE_DATE;
-        Patient.BOOSTER_DATE = BOOSTER_DATE;
+        Patient.FIRST_NAME = firstName;
+        Patient.LAST_NAME = lastName;
+        Patient.MIDDLE_NAME = middleName;
+        Patient.SUFFIX = suffix;
+        Patient.ADDRESS = address;
+        Patient.SEX = gender;
+        Patient.BIRTHDAY = dateOfBirth;
+        Patient.AGE = age;
+        Patient.CIVIL_STATUS = civilStatus;
+        Patient.CONTACT_NUMBER = contactNumber;
+        Patient.FIRST_DOSE_BRAND = firstDoseBrand;
+        Patient.SECOND_DOSE_BRAND = secondDoseBrand;
+        Patient.BOOSTER_BRAND = boosterBrand;
+        Patient.FIRST_DOSE_DATE = firstDoseDate;
+        Patient.SECOND_DOSE_DATE = secondDoseDate;
+        Patient.BOOSTER_DATE = boosterDate;
 
         await Patient.save();
         res.status(200).json(Patient);
@@ -122,20 +139,57 @@ router.put('/update', auth('Patient'), async (req, res) => {
     }
 });
 
+
+// Update Patient Details Route
+router.put('/patient/update-password', auth('Patient'), async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const Patient = await patient.findOne({ where: { id: req.user.id } });
+        if (!Patient) {
+            return res.status(404).json({ error: 'Patient not found' });
+        }
+        Patient.EMAIL = email;
+        Patient.PASSWORD = hashedPassword
+        await Patient.save();
+        res.status(200).json(Patient);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
 // Get Logged-in Patient Information Route
+const moment = require('moment'); // Use moment.js for easier date manipulation
+
 router.get('/patient/me', auth('Patient'), async (req, res) => {
     const patientId = req.user.id;
     try {
-        // Return the logged-in patient's details
         const loggedInPatient = await patient.findByPk(patientId);
         if (!loggedInPatient) {
             return res.status(404).json({ error: 'Patient not found' });
         }
-        console.log(loggedInPatient.id);
-        res.status(200).json(loggedInPatient);
+
+        // Check if patient was created within the last 10 minutes
+        const isNewlyRegistered = moment().diff(moment(loggedInPatient.createdAt), 'minutes') < 1;
+
+        res.status(200).json({ ...loggedInPatient.toJSON(), isNewlyRegistered });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching the patient details.' });
     }
 });
 
+
+router.get('/secreSched', auth('Patient'), async (req, res) => {
+    const id = 12;
+    try {
+        const secretary = await Secretary.findByPk(id); // Find Secretary by primary key
+        if (!secretary) {
+            return res.status(404).json({ error: 'Secretary not found' });
+        }
+        res.status(200).json(secretary);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
 module.exports = router;

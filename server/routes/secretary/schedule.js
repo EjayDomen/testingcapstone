@@ -3,6 +3,8 @@ const Schedule = require('../../models/schedule');
 const auth = require('../../middleware/auth');
 const Doctor = require('../../models/doctor');
 const QueueMan = require('../../models/queueManagement');
+const {createLog} = require('../../services/logServices');
+
 
 const router = express.Router();
 
@@ -21,9 +23,9 @@ router.put('/updateSchedule/:doctorId', auth('Secretary'), async (req, res) => {
             // Find the doctor by ID
             const doctor = await Doctor.findByPk(doctorId, { transaction: t });
 
-            if (!doctor) {
-                return res.status(404).json({ error: 'Doctor not found' });
-            }
+            // if (!doctor) {
+            //     return res.status(404).json({ error: 'Doctor not found' });
+            // }
 
             // Get the count of existing schedules for the doctor
             const scheduleCount = await Schedule.count({ where: { DOCTOR_ID: doctorId }, transaction: t });
@@ -68,13 +70,18 @@ router.put('/updateSchedule/:doctorId', auth('Secretary'), async (req, res) => {
             return { doctor, updatedSchedules };
         });
 
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Updated schedule for doctor id: ${doctorId}`
+          }); 
+
         res.status(200).json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-
 
 
 // Route to fetch schedules based on day_of_week
@@ -96,7 +103,7 @@ router.get('/getSchedulesByDay', auth('Secretary'), async (req, res) => {
     try {
         // Fetch schedules from the database for the given day_of_week
         const schedules = await Schedule.findAll({
-            where: { DAY_OF_WEEK: dayNumber },
+            where: { DAY_OF_WEEK: dayNumber, is_deleted: false },
             include: [
                 {
                     model: Doctor,
@@ -156,6 +163,7 @@ router.get('/fetchSchedules', auth('Secretary'), async (req, res) => {
     try {
         // Fetch all schedules first, including doctor and queue management details, sorted by date and start time
         const schedules = await Schedule.findAll({
+            where:{ is_deleted: false},
             include: [
                 {
                     model: Doctor,
@@ -174,7 +182,7 @@ router.get('/fetchSchedules', auth('Secretary'), async (req, res) => {
             const dayNumber = dayOfWeekToNumber(schedule.DAY_OF_WEEK);
 
             // Fetch the queue management entry asynchronously
-            const queueManagement = await QueueMan.findOne({ where: { SCHEDULE_ID: schedule.SCHEDULE_ID } });
+            const queueManagement = await QueueMan.findAll({ where: { SCHEDULE_ID: schedule.SCHEDULE_ID } });
 
             return {
                 id: schedule.SCHEDULE_ID,

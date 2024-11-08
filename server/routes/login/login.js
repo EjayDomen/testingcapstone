@@ -19,7 +19,7 @@ router.post('/login', async (req, res) => {
             role = 'Secretary';
         } else {
             // If not found, check if the user is a patient
-            user = await Patient.findOne({ where: { EMAIL } });
+            user = await Patient.findOne({ where: { EMAIL, is_deleted: false } });
             if (user) {
                 role = 'Patient';
             }

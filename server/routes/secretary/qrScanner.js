@@ -35,7 +35,7 @@ router.post('/update-queue-status', async (req, res) => {
         // Update the queue with the new status and queue number
         const result = await Queue.update(
             {
-                STATUS: 'attended',
+                STATUS: 'waiting',
                 QUEUE_NUMBER: nextQueueNumber
             },
             { where: { APPOINTMENT_ID: appointmentId } }

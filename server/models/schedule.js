@@ -37,7 +37,11 @@ const schedules = sequelize.define('schedules', {
     SCHED_COUNTER: {
         type: DataTypes.INTEGER,
         allowNull:false
-    }
+    },
+    is_deleted: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
 }, {
     tableName: 'schedules',
     timestamps: false

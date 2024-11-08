@@ -4,7 +4,7 @@ const Notification = require('../models/notification');
 const Appointment = require('../models/appointment');
 
 // Function to create a new notification
-const createNotification = async ({ message, ENTITY_ID, status = 'unread', userId = null, USER_TYPE, ENTITY_TYPE }) => {
+const createNotification = async ({ message, ENTITY_ID, status = 'unread', userId = null, USER_TYPE, ENTITY_TYPE, TYPE }) => {
   try {
     const notification = await Notification.create({
       MESSAGE: message,
@@ -12,7 +12,8 @@ const createNotification = async ({ message, ENTITY_ID, status = 'unread', userI
       USER_ID: userId,
       USER_TYPE,
       ENTITY_TYPE,
-      ENTITY_ID
+      ENTITY_ID,
+      TYPE
     });
     return notification;
   } catch (error) {

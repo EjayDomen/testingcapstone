@@ -1,15 +1,23 @@
-const {DataTypes} = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const secretary = require('./secretary');
 
 
 // Define the Doctor model
-const Doctor = sequelize.define('doctors', {
+const Doctor = sequelize.define('Doctor', {
     FIRST_NAME: {
         type: DataTypes.STRING,
         allowNull: false
     },
+    MIDDLE_NAME: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
     LAST_NAME: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    SUFFIX: {
         type: DataTypes.STRING,
         allowNull: false
     },
@@ -36,23 +44,29 @@ const Doctor = sequelize.define('doctors', {
     DOCTOR_STATUS: {
         type: DataTypes.STRING,
         allowNull: false
-    }
+    },
+    is_deleted: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
 }, {
     tableName: 'doctors',
     timestamps: false
 });
 
-secretary.hasMany(Doctor,{
-    foreignKey:{
-        name:'SECRETARY_ID',
-        allowNull:true
+secretary.hasMany(Doctor, {
+    foreignKey: {
+        name: 'SECRETARY_ID',
+        allowNull: true,
+        as: 'doctors'
     }
 });
 
 Doctor.belongsTo(secretary, {
     foreignKey: {
         name: 'SECRETARY_ID',
-        allowNull: true
+        allowNull: true,
+        as: 'secretary'
     }
 });
 

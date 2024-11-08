@@ -4,12 +4,16 @@ const Doctors = require('../../models/doctor');
 const auth = require('../../middleware/auth');
 const Schedule = require('../../models/schedule');
 const router = express.Router();
+const {createLog} = require('../../services/logServices');
+const { Op } = require('sequelize');
 
-// add a doctor and its schedule
+
 router.post('/addDoctor', auth('Secretary'), async (req, res) => {
     const {
         FIRST_NAME,
+        MIDDLE_NAME,
         LAST_NAME,
+        SUFFIX,
         GENDER,
         HEALTH_PROFESSIONAL_ACRONYM,
         DEPARTMENT,
@@ -25,17 +29,13 @@ router.post('/addDoctor', auth('Secretary'), async (req, res) => {
     }
 
     try {
-        // Check if req.user is defined
-        if (!req.user || !req.user.id) {
-            return res.status(403).json({ error: 'Unauthorized: Secretary information not found' });
-        }
-
-        // Begin transaction for creating doctor and schedules together
         const result = await sequelize.transaction(async (t) => {
             // Create doctor
             const doctor = await Doctors.create({
                 FIRST_NAME,
+                MIDDLE_NAME,
                 LAST_NAME,
+                SUFFIX,
                 GENDER,
                 HEALTH_PROFESSIONAL_ACRONYM,
                 DEPARTMENT,
@@ -44,19 +44,47 @@ router.post('/addDoctor', auth('Secretary'), async (req, res) => {
                 DOCTOR_STATUS: 'Offline',
                 SECRETARY_ID: req.user.id // Ensure req.user is defined
             }, { transaction: t });
-
+    
             // Get the count of existing schedules for the doctor
-            const scheduleCount = await Schedule.count({ where: { DOCTOR_ID: doctor.id }, transaction: t });
-
+            const scheduleCount = await Schedule.count({ where: { DOCTOR_ID: doctor.id, is_deleted: false }, transaction: t });
+    
             // Iterate over the schedules array and create schedules for the newly created doctor
-            const newSchedules = await Promise.all(schedules.map(async (schedule, index) => {
+            for (const schedule of schedules) {
                 const { day_of_week, start_time, end_time, slot_count } = schedule;
-
+    
                 // Validate schedule fields
                 if (!day_of_week || !start_time || !end_time || !slot_count) {
                     throw new Error('All schedule fields are required');
                 }
-
+    
+                // Check if a schedule already exists with overlapping time for the doctor
+                const overlappingSchedule = await Schedule.findOne({
+                    where: {
+                        DAY_OF_WEEK: day_of_week,
+                        is_deleted: false,
+                        [Op.or]: [
+                            {
+                                START_TIME: { [Op.lte]: start_time },
+                                END_TIME: { [Op.gt]: start_time }
+                            },
+                            {
+                                START_TIME: { [Op.lt]: end_time },
+                                END_TIME: { [Op.gte]: end_time }
+                            },
+                            {
+                                START_TIME: { [Op.gte]: start_time },
+                                END_TIME: { [Op.lte]: end_time }
+                            }
+                        ]
+                    },
+                    transaction: t
+                });
+    
+                if (overlappingSchedule) {
+                    // Throw an error with custom message for overlapping schedule
+                    throw new Error(`Schedule conflict: The doctor has been created, but the schedule conflicts with an existing one on ${day_of_week} from ${start_time} to ${end_time}. You can modify the schedule by editing the doctor's details.`);
+                }
+    
                 // Log the schedule data
                 console.log('Creating schedule:', {
                     DOCTOR_ID: doctor.id,
@@ -64,34 +92,53 @@ router.post('/addDoctor', auth('Secretary'), async (req, res) => {
                     START_TIME: start_time,
                     END_TIME: end_time,
                     SLOT_COUNT: slot_count,
-                    SCHED_COUNTER: scheduleCount + index + 1
+                    SCHED_COUNTER: scheduleCount + 1
                 });
-
+    
                 // Create each schedule with SCHED_COUNTER starting from 1
-                return Schedule.create({
-                    DOCTOR_ID: doctor.id, // Use doctor.id from the created doctor
+                await Schedule.create({
+                    DOCTOR_ID: doctor.id,
                     DAY_OF_WEEK: day_of_week,
                     START_TIME: start_time,
                     END_TIME: end_time,
                     SLOT_COUNT: slot_count,
-                    SCHED_COUNTER: scheduleCount + index + 1 // Increment counter
+                    SCHED_COUNTER: scheduleCount + 1
                 }, { transaction: t });
-            }));
-
-            return { doctor, newSchedules };
+            }
+    
+            return { doctor, newSchedules: schedules };
         });
-
+    
+        // Log the action outside the transaction
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Doctor added and associated schedule.`
+        });
+    
+        // Send successful response
         res.status(201).json(result);
     } catch (error) {
-        console.error('Error in /addDoctor:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        // Check for the custom error message for overlapping schedules
+        if (error.message.startsWith("Schedule conflict")) {
+            res.status(409).json({ error: error.message });
+        } else {
+            console.error('Error in /addDoctor:', error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
-});
+});    
+
 
 // view all doctor
 router.get('/', auth('Secretary'), async (req, res) => {
     try{
-        const doctor = await Doctors.findAll();
+        const doctor = await Doctors.findAll( {where: {is_deleted: false}});
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Viewed all doctors.`
+          }); 
         res.status(200).json(doctor);
     } catch(error){
         res.status(400).json({error: error.message});
@@ -101,7 +148,7 @@ router.get('/', auth('Secretary'), async (req, res) => {
 // view doctor count
 router.get('/count', auth('Secretary'), async (req, res) => {
     try {
-        const doctorCount = await Doctors.count(); // Directly count the doctors
+        const doctorCount = await Doctors.count({where:{is_deleted: false}}); // Directly count the doctors
         res.status(200).json({ doctorCount });
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -113,11 +160,17 @@ router.get('/count', auth('Secretary'), async (req, res) => {
 router.get('/:id', auth('Secretary'), async (req, res) =>{
     const {id} = req.params;
     try{
-        const doctor = await Doctors.findOne({where: {id}});
-        const schedule = await Schedule.findAll({where: {DOCTOR_ID: id}})
+        const doctor = await Doctors.findOne({where: {id: id, is_deleted: false}});
+        const schedule = await Schedule.findAll({where: {DOCTOR_ID: id, is_deleted: false}})
         if(!doctor){
             return res.status(404).json({error: 'Doctor not found'})
         }
+
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Viewed doctor id: ${doctor.id}.`
+          }); 
 
         res.status(200).json({ doctor, schedule });
     } catch (error){
@@ -132,11 +185,13 @@ function safeReplacer(key, value) {
     return value;
   }
 
-router.put('/updateDoctor/:id', auth('Secretary'), async (req, res) => {
+router.put('/updateDoctor/:id', auth('Secretary'), async (req, res, next) => {
     const { id } = req.params; // Doctor ID
     const {
         FIRST_NAME,
+        MIDDLE_NAME,
         LAST_NAME,
+        SUFFIX,
         GENDER,
         HEALTH_PROFESSIONAL_ACRONYM,
         DEPARTMENT,
@@ -152,12 +207,13 @@ router.put('/updateDoctor/:id', auth('Secretary'), async (req, res) => {
             return res.status(400).json({ error: 'All fields are required, including an array of schedules' });
         }
 
-        // Begin transaction for updating doctor and associated schedules
         const result = await sequelize.transaction(async (t) => {
             // Update the doctor's information
-            const doctorUpdated = await Doctors.update({
+            await Doctors.update({
                 FIRST_NAME,
+                MIDDLE_NAME,
                 LAST_NAME,
+                SUFFIX,
                 GENDER,
                 HEALTH_PROFESSIONAL_ACRONYM,
                 DEPARTMENT,
@@ -168,77 +224,92 @@ router.put('/updateDoctor/:id', auth('Secretary'), async (req, res) => {
                 transaction: t
             });
 
-            // If no doctor was found, return a 404 error
-            // if (!doctorUpdated[0]) {
-            //     return res.status(404).json({ error: 'Doctor not found' });
-            // }
+            // Fetch current schedules for the doctor
+            const existingSchedules = await Schedule.findAll({ where: { is_deleted: false }, transaction: t });
 
-            // Get the current schedule count for the doctor
-            const currentScheduleCount = await Schedule.count({ where: { DOCTOR_ID: id }, transaction: t });
+            // Map existing schedules by ID for easy lookup
+            const existingSchedulesMap = new Map(existingSchedules.map(s => [s.SCHEDULE_ID, s]));
 
-            // Process incoming schedules
-            const updatedSchedules = await Promise.all(schedules.map(async (schedule, index) => {
-                const { day_of_week, start_time, end_time, slot_count } = schedule;
-
-                // Validate schedule fields
+            const updatedSchedules = await Promise.all(schedules.map(async (schedule) => {
+                const { scheduleId = null, day_of_week, start_time, end_time, slot_count } = schedule;
+                
                 if (!day_of_week || !start_time || !end_time || !slot_count) {
                     throw new Error('All schedule fields are required');
                 }
 
-                // Check if the schedule exists globally (across all doctors)
-                const existingSchedule = await Schedule.findOne({
+                // Check for overlapping schedules for this doctor
+                const overlappingSchedule = await Schedule.findOne({
                     where: {
-                        DOCTOR_ID:id
+                        DAY_OF_WEEK: day_of_week,
+                        is_deleted: false,
+                        [Op.or]: [
+                            {
+                                START_TIME: { [Op.lte]: start_time },
+                                END_TIME: { [Op.gt]: start_time }
+                            },
+                            {
+                                START_TIME: { [Op.lt]: end_time },
+                                END_TIME: { [Op.gte]: end_time }
+                            },
+                            {
+                                START_TIME: { [Op.gte]: start_time },
+                                END_TIME: { [Op.lte]: end_time }
+                            }
+                        ]
                     },
                     transaction: t
                 });
-                console.log(id);
-                if (existingSchedule) {
-                    if (existingSchedule.DOCTOR_ID == id) {
-                        // If the schedule ex ists and belongs to the current doctor, update the schedule
-                        await Schedule.update({
-                            DOCTOR_ID: id,
-                            SLOT_COUNT: slot_count,
-                            DAY_OF_WEEK: day_of_week,
-                            START_TIME: start_time,
-                            END_TIME: end_time,
-                        }, {
-                            where: { SCHEDULE_ID: existingSchedule.SCHEDULE_ID },
-                            transaction: t
-                        });
 
-                        return existingSchedule;
-                    } else {
-                        // If the schedule exists globally for another doctor, throw an error
-                        throw new Error(`Schedule already exists for another doctor on ${day_of_week} from ${start_time} to ${end_time}.`);
-                    }
+                if (overlappingSchedule) {
+                    throw new Error(`Schedule conflict on ${day_of_week} from ${start_time} to ${end_time}. This overlaps with an existing schedule.`);
+                }
+
+                // If the schedule exists, update it
+                if (existingSchedulesMap.has(scheduleId)) {
+                    await Schedule.update({
+                        SLOT_COUNT: slot_count,
+                        DAY_OF_WEEK: day_of_week,
+                        START_TIME: start_time,
+                        END_TIME: end_time,
+                    }, {
+                        where: { SCHEDULE_ID: scheduleId },
+                        transaction: t
+                    });
+                    return existingSchedulesMap.get(scheduleId);
                 } else {
-                    // If no global match is found, create a new schedule for this doctor
+                    // Otherwise, create a new schedule
                     return Schedule.create({
                         DOCTOR_ID: id,
                         DAY_OF_WEEK: day_of_week,
                         START_TIME: start_time,
                         END_TIME: end_time,
                         SLOT_COUNT: slot_count,
-                        SCHED_COUNTER: currentScheduleCount + index + 1 // Increment SCHED_COUNTER for new schedules
                     }, { transaction: t });
                 }
             }));
 
-            // Return the updated result
-            res.json({ doctorUpdated, updatedSchedules });
+            // Log the action with more detailed updates and creations
+            await createLog({
+                userId: req.user.id,
+                userType: 'Secretary',
+                action: `Updated doctor details for doctor_Id: ${id}, schedules updated or created: ${updatedSchedules.map(s => s.SCHEDULE_ID)}.`
+            });
 
+            return { updatedSchedules };
         });
+
+        res.json(result);
+
     } catch (error) {
         console.error(error);
-        if (!res.headersSent) {
-            res.status(500).json({ error: error.message || 'Internal server error' });
+        // Check for custom overlap error and respond with a 409 status
+        if (error.message.startsWith('Schedule conflict')) {
+            res.status(409).json({ error: error.message });
         } else {
-            next(error); // Correctly pass the error to the error-handling middleware if the response is already sent
+            res.status(500).json({ error: 'Internal server error' });
         }
     }
 });
-
 
 
 
@@ -263,7 +334,11 @@ router.put('/updateDoctorStatus/:id', auth('Secretary'), async (req, res) => {
         if (!doctorUpdated[0]) {
             return res.status(404).json({ error: 'Doctor not found' });
         }
-
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Updated doctor's status for doctor_Id: ${id}.`
+          }); 
         res.status(200).json({ message: 'Doctor status updated successfully' });
     } catch (error) {
         console.error(error);
@@ -281,13 +356,17 @@ router.delete('/deleteDoctor/:id', auth('Secretary'), async (req, res) => {
         // Begin transaction for deleting doctor and associated schedules
         await sequelize.transaction(async (t) => {
             // Delete associated schedules first
-            await Schedule.destroy({
-                where: { doctor_id: id },
+            await Schedule.update({
+                is_deleted: true
+            },{
+                where: { DOCTOR_ID: id },
                 transaction: t
             });
 
             // Delete the doctor
-            const doctorDeleted = await Doctors.destroy({
+            const doctorDeleted = await Doctors.update({
+                is_deleted: true
+            },{
                 where: { id: id },
                 transaction: t
             });
@@ -298,6 +377,11 @@ router.delete('/deleteDoctor/:id', auth('Secretary'), async (req, res) => {
             }
         });
 
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Deleted doctor and associated schedule for doctor_id: ${id}.`
+          }); 
         res.status(200).json({ message: 'Doctor and associated schedules deleted successfully' });
     } catch (error) {
         console.error(error);

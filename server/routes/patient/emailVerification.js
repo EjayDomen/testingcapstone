@@ -19,31 +19,47 @@ function generateOTP() {
 }
 
 
-function sendOTP(email, otp) {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'OTP Verification',
-        text: `Your OTP for verification is: ${otp}`
-    };
 
-    // Configure the transport
-    const transporter = nodeMailer.createTransport({
-        service: 'Gmail', // Example service
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // Use environment variables for security
-        },
-    });
+async function sendOTP(email, otp) {
+    try {
+        // Configure the transporter
+        const transporter = nodeMailer.createTransport({
+            service: 'Gmail', // Example service
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS, // Use environment variables for security
+            },
+        });
 
-    // Send the email
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            return console.log('Error:', error);
-        }
-        console.log('Email sent:', info.response);
-    });
+        // Define email options
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'OTP Verification',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
+                    <h2 style="text-align: center; color: #4CAF50;">OTP Verification</h2>
+                    <p>Dear User,</p>
+                    <p>Thank you for using our service. Please use the following One-Time Password (OTP) to complete your verification process:</p>
+                    <div style="text-align: center; margin: 20px 0; font-size: 24px; font-weight: bold; color: #333;">
+                        ${otp}
+                    </div>
+                    <p style="color: #555;">This OTP is valid for 10 minutes. Please do not share this code with anyone for security reasons.</p>
+                    <hr style="border: none; border-top: 1px solid #ddd;">
+                    <p style="font-size: 12px; text-align: center; color: #888;">If you did not request this OTP, please ignore this email or contact support if you have any concerns.</p>
+                </div>
+            `,
+        };
 
+        // Send the email
+        const info = await transporter.sendMail(mailOptions);
+
+        console.log(`OTP sent to ${email}: ${info.response}`);
+        return true; // Return success status
+    } catch (error) {
+        console.error('Error sending OTP:', error);
+        return false; // Return failure status
+    }
 }
 
 // Route to handle sending OTP
@@ -115,8 +131,9 @@ router.post('/verify-otp', async (req, res) => {
 router.post('/resend-otp', async (req, res) => {
     const { email } = req.body;
 
+    console.log("Current OtpCache:", OtpCache); // Log cache contents before check
     // Check if the OTP exists for this email
-    if (!OtpCache.hasOwnProperty(email)) {
+    if (OtpCache.hasOwnProperty(email)) {
         return res.status(400).json({ message: 'OTP not found for this email. Please request a new OTP.' });
     }
 
