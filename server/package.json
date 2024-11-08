@@ -9,7 +9,7 @@
     "start:server": "node app.js",
     "start:client": "cd ../client && npm install && npm run build",
     "dev": "nodemon app.js",
-    "start": "npm start --server && npm start --client"
+    "start": "npm start --server"
   },
   "proxy": "http://localhost:5000",
   "keywords": [],

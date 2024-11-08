@@ -5,7 +5,7 @@ const patient = require('./patient');
 const schedule = require('./schedule');
 const doctor = require('./doctor');
 
-const Appointment = sequelize.define('Appointment', {
+const Appointment = sequelize.define('appointment', {
     FIRST_NAME: {
         type: DataTypes.STRING,
         allowNull: false
