@@ -200,13 +200,17 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
         // Handle cases where queue details may be null and include the complete Doctor Name
         const appointmentsWithQueue = patientAppointments.map(appointment => {
             const doctor = appointment.Doctor;
-            const doctorName = doctor 
+            const doctorName = doctor
                 ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}` : 'nonodoctor';
 
             return {
                 ...appointment.toJSON(),
                 Queue: appointment.Queue ? appointment.Queue : { QUEUE_NUMBER: 'Not assigned' },
-                DoctorName: doctorName // Add the complete Doctor Name here
+                DoctorName: doctorName, // Add the complete Doctor Name here
+                Doc_FIRST_NAME: doctor.FIRST_NAME || '',
+                Doc_LAST_NAME: doctor.LAST_NAME || '',
+                Doc_MIDDLE_NAME: doctor.MIDDLE_NAME || '',
+                Doc_SUFFIX: doctor.SUFFIX || '',
             };
         });
 
