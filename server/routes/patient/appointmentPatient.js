@@ -182,7 +182,7 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
             include: [
                 {
                     model: Doctor,
-                    attributes: ['id', 'FIRST_NAME', 'LAST_NAME', 'EXPERTISE', 'HEALTH_PROFESSIONAL_ACRONYM']
+                    attributes: ['id', 'FIRST_NAME', 'MIDDLE_NAME','LAST_NAME','SUFFIX',  'EXPERTISE', 'HEALTH_PROFESSIONAL_ACRONYM']
                 },
                 {
                     model: Queue,
