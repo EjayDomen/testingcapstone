@@ -201,8 +201,7 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
         const appointmentsWithQueue = patientAppointments.map(appointment => {
             const doctor = appointment.Doctor;
             const doctorName = doctor 
-                ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}`
-                : 'N/A';
+                ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}`;
 
             return {
                 ...appointment.toJSON(),
