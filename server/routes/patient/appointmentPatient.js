@@ -206,11 +206,8 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
             return {
                 ...appointment.toJSON(),
                 Queue: appointment.Queue ? appointment.Queue : { QUEUE_NUMBER: 'Not assigned' },
-                DoctorName: doctorName, // Add the complete Doctor Name here
-                Doc_FIRST_NAME: doctor.FIRST_NAME || '',
-                Doc_LAST_NAME: doctor.LAST_NAME || '',
-                Doc_MIDDLE_NAME: doctor.MIDDLE_NAME || '',
-                Doc_SUFFIX: doctor.SUFFIX || '',
+                DoctorName: doctorName // Add the complete Doctor Name here
+                
             };
         });
 
