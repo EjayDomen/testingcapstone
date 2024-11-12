@@ -185,8 +185,8 @@ function safeReplacer(key, value) {
     return value;
   }
 
-router.put('/updateDoctor/:id', auth('Secretary'), async (req, res, next) => {
-    const { id } = req.params; // Doctor ID
+  router.put('/updateDoctor/:id', auth('Secretary'), async (req, res, next) => {
+    const { id } = req.params;
     const {
         FIRST_NAME,
         MIDDLE_NAME,
@@ -197,18 +197,18 @@ router.put('/updateDoctor/:id', auth('Secretary'), async (req, res, next) => {
         DEPARTMENT,
         YEARS_OF_EXPERIENCE,
         EXPERTISE,
-        schedules // Expect an array of schedules in the request body
+        schedules
     } = req.body;
 
     try {
-        // Validate required fields for doctor and schedules
+        // Basic validation for doctor details
         if (!FIRST_NAME || !LAST_NAME || !GENDER || !HEALTH_PROFESSIONAL_ACRONYM ||
-            !DEPARTMENT || !YEARS_OF_EXPERIENCE || !EXPERTISE || !schedules || !Array.isArray(schedules)) {
-            return res.status(400).json({ error: 'All fields are required, including an array of schedules' });
+            !DEPARTMENT || !YEARS_OF_EXPERIENCE || !EXPERTISE) {
+            return res.status(400).json({ error: 'All doctor fields are required' });
         }
 
         const result = await sequelize.transaction(async (t) => {
-            // Update the doctor's information
+            // Update doctor's information
             await Doctors.update({
                 FIRST_NAME,
                 MIDDLE_NAME,
@@ -224,85 +224,83 @@ router.put('/updateDoctor/:id', auth('Secretary'), async (req, res, next) => {
                 transaction: t
             });
 
-            // Fetch current schedules for the doctor
-            const existingSchedules = await Schedule.findAll({ where: { is_deleted: false }, transaction: t });
-
-            // Map existing schedules by ID for easy lookup
-            const existingSchedulesMap = new Map(existingSchedules.map(s => [s.SCHEDULE_ID, s]));
-
-            const updatedSchedules = await Promise.all(schedules.map(async (schedule) => {
-                const { scheduleId = null, day_of_week, start_time, end_time, slot_count } = schedule;
-                
-                if (!day_of_week || !start_time || !end_time || !slot_count) {
-                    throw new Error('All schedule fields are required');
-                }
-
-                // Check for overlapping schedules for this doctor
-                const overlappingSchedule = await Schedule.findOne({
-                    where: {
-                        DAY_OF_WEEK: day_of_week,
-                        is_deleted: false,
-                        [Op.or]: [
-                            {
-                                START_TIME: { [Op.lte]: start_time },
-                                END_TIME: { [Op.gt]: start_time }
-                            },
-                            {
-                                START_TIME: { [Op.lt]: end_time },
-                                END_TIME: { [Op.gte]: end_time }
-                            },
-                            {
-                                START_TIME: { [Op.gte]: start_time },
-                                END_TIME: { [Op.lte]: end_time }
-                            }
-                        ]
-                    },
+            if (schedules && schedules.length) {
+                // Fetch current schedules for comparison
+                const existingSchedules = await Schedule.findAll({
+                    where: { DOCTOR_ID: id, is_deleted: false },
                     transaction: t
                 });
 
-                if (overlappingSchedule) {
-                    throw new Error(`Schedule conflict on ${day_of_week} from ${start_time} to ${end_time}. This overlaps with an existing schedule.`);
-                }
+                const existingSchedulesMap = new Map(
+                    existingSchedules.map(s => [s.SCHEDULE_ID, s])
+                );
 
-                // If the schedule exists, update it
-                if (existingSchedulesMap.has(scheduleId)) {
-                    await Schedule.update({
-                        SLOT_COUNT: slot_count,
-                        DAY_OF_WEEK: day_of_week,
-                        START_TIME: start_time,
-                        END_TIME: end_time,
-                    }, {
-                        where: { SCHEDULE_ID: scheduleId },
-                        transaction: t
-                    });
-                    return existingSchedulesMap.get(scheduleId);
-                } else {
-                    // Otherwise, create a new schedule
-                    return Schedule.create({
-                        DOCTOR_ID: id,
-                        DAY_OF_WEEK: day_of_week,
-                        START_TIME: start_time,
-                        END_TIME: end_time,
-                        SLOT_COUNT: slot_count,
-                    }, { transaction: t });
-                }
-            }));
+                // Update only if schedules have changes
+                await Promise.all(schedules.map(async (schedule) => {
+                    const { scheduleId = null, day_of_week, start_time, end_time, slot_count } = schedule;
+                    const existing = existingSchedulesMap.get(scheduleId);
 
-            // Log the action with more detailed updates and creations
+                    // Check for changes
+                    const isChanged = !existing || existing.DAY_OF_WEEK !== day_of_week ||
+                        existing.START_TIME !== start_time ||
+                        existing.END_TIME !== end_time ||
+                        existing.SLOT_COUNT !== slot_count;
+
+                    // Only update or create if there are changes
+                    if (isChanged) {
+                        // Check for conflicts only if changes are made
+                        const overlappingSchedule = await Schedule.findOne({
+                            where: {
+                                DOCTOR_ID: id,
+                                DAY_OF_WEEK: day_of_week,
+                                is_deleted: false,
+                                [Op.or]: [
+                                    { START_TIME: { [Op.lte]: start_time }, END_TIME: { [Op.gt]: start_time } },
+                                    { START_TIME: { [Op.lt]: end_time }, END_TIME: { [Op.gte]: end_time } },
+                                    { START_TIME: { [Op.gte]: start_time }, END_TIME: { [Op.lte]: end_time } }
+                                ]
+                            },
+                            transaction: t
+                        });
+
+                        if (overlappingSchedule) {
+                            throw new Error(`Schedule conflict on ${day_of_week} from ${start_time} to ${end_time}.`);
+                        }
+
+                        // Update or create schedule
+                        if (existing) {
+                            await existing.update({
+                                DAY_OF_WEEK: day_of_week,
+                                START_TIME: start_time,
+                                END_TIME: end_time,
+                                SLOT_COUNT: slot_count
+                            }, { transaction: t });
+                        } else {
+                            await Schedule.create({
+                                DOCTOR_ID: id,
+                                DAY_OF_WEEK: day_of_week,
+                                START_TIME: start_time,
+                                END_TIME: end_time,
+                                SLOT_COUNT: slot_count
+                            }, { transaction: t });
+                        }
+                    }
+                }));
+            }
+
+            // Log the update action
             await createLog({
                 userId: req.user.id,
                 userType: 'Secretary',
-                action: `Updated doctor details for doctor_Id: ${id}, schedules updated or created: ${updatedSchedules.map(s => s.SCHEDULE_ID)}.`
+                action: `Updated doctor details for doctor_Id: ${id}, schedules updated or created.`
             });
 
-            return { updatedSchedules };
+            return { message: 'Doctor and schedules updated successfully' };
         });
 
         res.json(result);
-
     } catch (error) {
         console.error(error);
-        // Check for custom overlap error and respond with a 409 status
         if (error.message.startsWith('Schedule conflict')) {
             res.status(409).json({ error: error.message });
         } else {
@@ -310,6 +308,7 @@ router.put('/updateDoctor/:id', auth('Secretary'), async (req, res, next) => {
         }
     }
 });
+
 
 
 
