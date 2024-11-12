@@ -15,7 +15,7 @@ const Queue = sequelize.define('queues', {
   },
   APPOINTMENT_ID: {
     type: DataTypes.INTEGER,
-    allowNull: true
+    allowNull: false
   },
   PATIENT_ID: {
     type: DataTypes.INTEGER,
@@ -53,14 +53,14 @@ const Queue = sequelize.define('queues', {
 Queue.belongsTo(Appointment, {
   foreignKey: {
     name: 'APPOINTMENT_ID', // Ensure foreign key consistency
-    allowNull: true
+    allowNull: false
   }
 });
 
 Appointment.hasOne(Queue, {
   foreignKey: {
     name: 'APPOINTMENT_ID', // Ensure foreign key consistency
-    allowNull: true
+    allowNull: false
   }
 });
 

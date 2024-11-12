@@ -144,6 +144,7 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
             await Queue.create({
                 QUEUE_NUMBER: 0,  // Queue number logic can be implemented here
                 APPOINTMENT_ID: newAppointment.id,
+                PATIENT_ID: newAppointment.PATIENT_ID,
                 QUEUE_MANAGEMENT_ID: queueManagement.id,
                 MESSAGE_ID: '',
                 PROGRESS: 'pending',
