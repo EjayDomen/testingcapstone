@@ -710,7 +710,7 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
                 patientName: queue.Appointment
                     ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
                     : 'N/A',
-
+                appointmentId: queue.APPOINTMENT_ID,
                 status: queue.STATUS,
                 age: queue.Appointment ? queue.Appointment.AGE || 'N/A' : 'N/A',
                 address: queue.Appointment ? queue.Appointment.ADDRESS || 'NULL' : 'NULL',
