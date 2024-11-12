@@ -708,16 +708,16 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
         const formattedQueues = queues.map((queue) => ({
             queueNumber: queue.QUEUE_NUMBER,
             patientName: queue.Appointment
-            ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
-            : 'N/A',
-        
+                ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
+                : 'N/A',
+            
             status: queue.STATUS,
-            age: queue.Appointment.AGE || 'N/A',
-            address: queue.Appointment.ADDRESS || 'NULL',
-            contactNumber: queue.Appointment.CONTACT_NUMBER || 'NULL',
-            type: queue.Appointment.TYPE,
+            age: queue.Appointment ? queue.Appointment.AGE : 'N/A',
+            address: queue.Appointment ? queue.Appointment.ADDRESS : 'NULL',
+            contactNumber: queue.Appointment ? queue.Appointment.CONTACT_NUMBER : 'NULL',
+            type: queue.Appointment ? queue.Appointment.TYPE : 'N/A',
         }));
-
+        
         // Send the response with the formatted queues
         res.status(200).json({
             queueManagementId: queueManagement.id,
