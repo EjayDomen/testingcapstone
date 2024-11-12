@@ -712,10 +712,10 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
                     : 'N/A',
                 appointmentId: queue.APPOINTMENT_ID,
                 status: queue.STATUS,
-                age: queue.Appointment ? queue.Appointment.AGE || 'N/A' : 'N/A',
-                address: queue.Appointment ? queue.Appointment.ADDRESS || 'NULL' : 'NULL',
-                contactNumber: queue.Appointment ? queue.Appointment.CONTACT_NUMBER || 'NULL' : 'NULL',
-                type: queue.Appointment ? queue.Appointment.TYPE : 'N/A',
+                age: queue.appointment ? queue.appointment.AGE || 'N/A' : 'N/A',
+                address: queue.appointment ? queue.appointment.ADDRESS || 'NULL' : 'NULL',
+                contactNumber: queue.appointment ? queue.appointment.CONTACT_NUMBER || 'NULL' : 'NULL',
+                type: queue.appointment ? queue.appointment.TYPE : 'N/A',
             }));
 
         
