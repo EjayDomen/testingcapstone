@@ -197,7 +197,7 @@ const getQueueForAppointment = async (patientId) => {
       // Fetch department, floor, and room number from the doctor's secretary (assumed to be in the Secretary model)
       const doctor = appointment.Doctor;
       const secretary = doctor?.secretary; // Assuming each doctor has a secretary with location details
-      const department = secretary.DEPARTMENT || 'N/A';
+      const department = secretary?.DEPARTMENT || 'N/A';
       const floor = secretary?.FLOOR_NUMBER || 'N/A';
       const roomNumber = secretary?.ROOM_NUMBER || 'N/A';
 
