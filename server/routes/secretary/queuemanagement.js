@@ -680,7 +680,7 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
             include: [
                 {
                     model: Appointment,
-                    attributes: ['FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'AGE', 'ADDRESS', 'CONTACT_NUMBER', 'TYPE'],
+                    attributes: ['id', 'FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'AGE', 'ADDRESS', 'CONTACT_NUMBER', 'TYPE'],
                 },
             ],
             order: [['QUEUE_NUMBER', 'ASC']]
@@ -711,6 +711,7 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
                 ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
                 : 'N/A',
             
+            appointmentId: queue.Appointment ? queue.Appointment.id : 'N/A',
             status: queue.STATUS,
             age: queue.Appointment ? queue.Appointment.AGE : 'N/A',
             address: queue.Appointment ? queue.Appointment.ADDRESS : 'NULL',
