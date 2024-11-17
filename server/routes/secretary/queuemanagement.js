@@ -715,15 +715,15 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
         // Format the queue details
         const formattedQueues = queues.map((queue) => ({
             queueNumber: queue.QUEUE_NUMBER,
-            patientName: queue.Appointment
-            ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
+            patientName: queue.appointment
+            ? `${queue.appointment.FIRST_NAME} ${queue.appointment.MIDDLE_NAME ? queue.appointment.MIDDLE_NAME + ' ' : ''}${queue.appointment.LAST_NAME}${queue.appointment.SUFFIX ? ', ' + queue.appointment.SUFFIX : ''}`
             : 'N/A',
         
             status: queue.STATUS,
-            age: queue.Appointment.AGE || 'N/A',
-            address: queue.Appointment.ADDRESS || 'NULL',
-            contactNumber: queue.Appointment.CONTACT_NUMBER || 'NULL',
-            type: queue.Appointment.TYPE,
+            age: queue.appointment.AGE || 'N/A',
+            address: queue.appointment.ADDRESS || 'NULL',
+            contactNumber: queue.appointment.CONTACT_NUMBER || 'NULL',
+            type: queue.appointment.TYPE,
         }));
 
         // Send the response with the formatted queues

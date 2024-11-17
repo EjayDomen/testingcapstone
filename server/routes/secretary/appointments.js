@@ -14,6 +14,7 @@ const { Op, fn, col } = require('sequelize');
 const router = express.Router();
 const { createNotification } = require('../../services/notificationService');
 const { createLog } = require('../../services/logServices');
+const { schedule } = require('node-cron');
 const formatInTimeZone = require('date-fns-tz').formatInTimeZone;
 
 
@@ -392,7 +393,7 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             where: { SCHEDULE_ID: scheduleId },
             transaction
         });
-
+        
         const queueMan = await QueueManagement.findOne({ where: { SCHEDULE_ID: scheduleId } });
 
         if (!queueMan) {
@@ -415,6 +416,7 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             { STATUS: 'cancelled' },
             { where: { SCHEDULE_ID: scheduleId }, transaction }
         );
+
 
         // Create notifications for each cancelled appointment
         for (const appt of appointments) {
