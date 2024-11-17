@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 // Define the Message model
-const Message = sequelize.define('Messages', {
+const Message = sequelize.define('messages', {
   sender_type: {
     type: DataTypes.ENUM('patient', 'secretary'),
     allowNull: false

@@ -4,7 +4,7 @@ const secretary = require('./secretary');
 
 
 // Define the Doctor model
-const Doctor = sequelize.define('Doctor', {
+const Doctor = sequelize.define('doctors', {
     FIRST_NAME: {
         type: DataTypes.STRING,
         allowNull: false

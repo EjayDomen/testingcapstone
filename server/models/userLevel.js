@@ -1,7 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');  // Ensure this path is correct
 
-const userLevel = sequelize.define('userLevel', {
+const userLevel = sequelize.define('userlevel', {
     ROLE_ID: {
         type: DataTypes.INTEGER,
         primaryKey: true,

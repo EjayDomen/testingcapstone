@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const userLevel = require('./userLevel');
 
-const secretary = sequelize.define('secretary', {
+const secretary = sequelize.define('secretaries', {
     FIRST_NAME: {
         type: DataTypes.STRING,
         allowNull: false

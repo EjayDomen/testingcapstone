@@ -3,7 +3,7 @@ const sequelize = require('../config/database');
 const Appointment = require('./appointment'); // Ensure correct path to the appointment model
 const QueueManagement = require('./queueManagement');
 
-const Queue = sequelize.define('Queue', {
+const Queue = sequelize.define('queues', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,

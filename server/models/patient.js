@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const userLevel = require('./userLevel');
 
-const patient = sequelize.define('patient', {
+const patient = sequelize.define('patients', {
     id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
