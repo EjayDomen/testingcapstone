@@ -186,7 +186,7 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
                     required: false
                 }
             ],
-            group: ['appointment.id'], // Group by the appointment's primary key
+            group: ['appointments.id'], // Group by the appointment's primary key
         });
         
 
