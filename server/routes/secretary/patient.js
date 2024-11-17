@@ -1,9 +1,10 @@
 const express = require('express');
 const sequelize = require('../../config/database');
 const Appointment = require('../../models/appointment');
-const schedule = require('../../models/schedule');
+const Schedule = require('../../models/schedule');
 const Patient = require('../../models/patient');
-const Doctor = require('../../models/doctor')
+const Doctors = require('../../models/doctor');
+const {createLog} = require('../../services/logServices');
 const auth = require('../../middleware/auth');
 
 const router = express.Router();
@@ -18,68 +19,65 @@ router.get('/', auth('Secretary'), async (req, res)=> {
     }
 });
 
-// Endpoint to get the number of patients attended by day
-router.get('/patients-attended', async (req, res) => {
-    try {
-      // Fetch the count of patients attended (with status 'attended') per day
-      const attendedData = await Appointment.findAll({
-        attributes: [
-          [sequelize.fn('DATE', sequelize.col('APPOINTMENT_DATE')), 'date'], // Group by date
-          [sequelize.fn('COUNT', sequelize.col('id')), 'patientCount'], // Count of patients
-        ],
-        where: {
-          status: 'completed', // Assuming you have a status field that marks patients as attended
-        },
-        group: ['date'], // Group by the appointment date
-        order: [['date', 'ASC']], // Order by date ascending
-      });
-  
-      res.status(200).json(attendedData); // Send the data as JSON to the frontend
-    } catch (error) {
-      console.error('Error fetching patient attended data:', error);
-      res.status(500).json({ message: 'Internal server error' });
-    }
-  });
-
-
-// Endpoint to get monthly patient attended count
-router.get('/secretary/patients-attended/monthly', async (req, res) => {
-    try {
+// Endpoint for daily counts
+router.get('/patients-attended/daily', async (req, res) => {
+  try {
       const data = await Appointment.findAll({
-        attributes: [
-          [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('APPOINTMENT_DATE')), 'month'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'patientCount'],
-        ],
-        where: { status: 'completed' },
-        group: ['month'],
-        order: [['month', 'ASC']],
+          attributes: [
+              [sequelize.fn('DATE', sequelize.col('APPOINTMENT_DATE')), 'date'],
+              'status',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
+          ],
+          group: ['date', 'status'],
+          order: [['date', 'ASC']],
       });
       res.status(200).json(data);
-    } catch (error) {
-      res.status(500).json({ message: 'Error fetching monthly data' });
-    }
-  });
-  
-  // Endpoint to get weekly patient attended count
-  router.get('/secretary/patients-attended/weekly', async (req, res) => {
-    try {
+  } catch (error) {
+      res.status(500).json({ message: 'Error fetching daily data' });
+  }
+});
+
+
+
+// Endpoint for weekly counts
+router.get('/patients-attended/weekly', async (req, res) => {
+  try {
       const data = await Appointment.findAll({
-        attributes: [
-          [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'patientCount'],
-        ],
-        where: { status: 'completed' },
-        group: ['week'],
-        order: [['week', 'ASC']],
+          attributes: [
+              [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
+              'status',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
+          ],
+          group: ['week', 'status'],
+          order: [['week', 'ASC']],
       });
       res.status(200).json(data);
-    } catch (error) {
+  } catch (error) {
       res.status(500).json({ message: 'Error fetching weekly data' });
-    }
-  });
+  }
+});
+
+// Endpoint for weekly counts
+router.get('/patients-attended/weekly', async (req, res) => {
+  try {
+      const data = await Appointment.findAll({
+          attributes: [
+              [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
+              'status',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
+          ],
+          group: ['week', 'status'],
+          order: [['week', 'ASC']],
+      });
+      res.status(200).json(data);
+  } catch (error) {
+      res.status(500).json({ message: 'Error fetching weekly data' });
+  }
+});
+
   
-  // Endpoint to get today's patient attended count
-  router.get('/secretary/patients-attended/today', async (req, res) => {
+  // Endpoint to get today's appointment count
+  router.get('/patients-attended/today', async (req, res) => {
     try {
       const data = await Appointment.findAll({
         attributes: [
@@ -178,6 +176,103 @@ router.delete('/delete/:id', auth('Secretary'), async (req, res) => {
   }
 });
 
+// Display archived doctors
+router.get('/archivedDoctor', auth('Secretary'), async (req, res) => {
+  try {
+      const archivedDoctors = await Doctors.findAll({
+          where: { is_deleted: true }
+      });
+
+      if (archivedDoctors.length === 0) {
+          return res.status(404).json({ message: 'No archived doctors found' });
+      }
+
+      res.status(200).json(archivedDoctors);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Restore archived doctor and their schedules
+router.put('/restoreDoctor/:id', auth('Secretary'), async (req, res) => {
+  const { id } = req.params; // Doctor ID
+
+  try {
+      // Begin transaction for restoring doctor and associated schedules
+      await sequelize.transaction(async (t) => {
+          // Restore associated schedules first
+          await Schedule.update({
+              is_deleted: false
+          }, {
+              where: { DOCTOR_ID: id },
+              transaction: t
+          });
+
+          // Restore the doctor
+          const doctorRestored = await Doctors.update({
+              is_deleted: false
+          }, {
+              where: { id: id },
+              transaction: t
+          });
+
+          // If no doctor was restored, send a 404 response
+          if (!doctorRestored) {
+              return res.status(404).json({ error: 'Doctor not found!' });
+          }
+      });
+
+      await createLog({
+          userId: req.user.id,
+          userType: 'Secretary',
+          action: `Restored doctor and associated schedule for doctor_id: ${id}.`
+      });
+      res.status(200).json({ message: 'Doctor and associated schedules restored successfully' });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+router.get('/archivedPatients', auth('Secretary'), async (req, res) => {
+  try {
+    const archivedPatients = await Patient.findAll({
+      where: { is_deleted: true }
+    });
+
+    if (archivedPatients.length === 0) {
+      return res.status(404).json({ message: 'No archived patients found' });
+    }
+
+    res.status(200).json(archivedPatients);
+  } catch (error) {
+    console.error('Error fetching archived patients:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+router.put('/restore/:id', auth('Secretary'), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the patient by ID
+    const patient = await Patient.findByPk(id);
+
+    if (!patient || !patient.is_deleted) {
+      return res.status(404).json({ message: 'Patient not found or not archived' });
+    }
+
+    // Restore the patient by setting is_deleted to false
+    await patient.update({ is_deleted: false });
+
+    res.status(200).json({ message: 'Patient restored successfully' });
+  } catch (error) {
+    console.error('Error restoring patient:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 
 

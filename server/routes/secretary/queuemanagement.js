@@ -280,6 +280,13 @@ async function updateQueueStatusByQueueNumber(queueNumber, queueManagementId, ne
             transaction
         });
 
+        const appointment = await Appointment.findOne({
+            where:{
+                id: queue.APPOINTMENT_ID
+            },
+            transaction
+        });
+
         // If the queue doesn't exist, rollback and return a 404 response
         if (!queue) {
             console.error(`No queue found for QUEUE_NUMBER: ${queueNumber} and QUEUE_MANAGEMENT_ID: ${queueManagementId}`);
@@ -292,6 +299,7 @@ async function updateQueueStatusByQueueNumber(queueNumber, queueManagementId, ne
 
         // Update the status of the found queue
         await queue.update({ STATUS: newStatus }, { transaction });
+        await appointment.update({ STATUS: newStatus}, {transaction});
 
         // Commit the transaction
         await transaction.commit();
@@ -680,7 +688,7 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
             include: [
                 {
                     model: Appointment,
-                    attributes: ['id', 'FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'AGE', 'ADDRESS', 'CONTACT_NUMBER', 'TYPE'],
+                    attributes: ['FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'AGE', 'ADDRESS', 'CONTACT_NUMBER', 'TYPE'],
                 },
             ],
             order: [['QUEUE_NUMBER', 'ASC']]
@@ -705,20 +713,19 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
         const endTime = schedule?.END_TIME || 'N/A';
 
         // Format the queue details
-            const formattedQueues = queues.map((queue) => ({
-                queueNumber: queue.QUEUE_NUMBER,
-                patientName: queue.appointment
-                    ? `${queue.appointment.FIRST_NAME} ${queue.appointment.MIDDLE_NAME ? queue.appointment.MIDDLE_NAME + ' ' : ''}${queue.appointment.LAST_NAME}${queue.appointment.SUFFIX ? ', ' + queue.appointment.SUFFIX : ''}`
-                    : 'N/A',
-                appointmentId: queue.APPOINTMENT_ID,
-                status: queue.STATUS,
-                age: queue.appointment ? queue.appointment.AGE || 'N/A' : 'N/A',
-                address: queue.appointment ? queue.appointment.ADDRESS || 'NULL' : 'NULL',
-                contactNumber: queue.appointment ? queue.appointment.CONTACT_NUMBER || 'NULL' : 'NULL',
-                type: queue.appointment ? queue.appointment.TYPE : 'N/A',
-            }));
-
+        const formattedQueues = queues.map((queue) => ({
+            queueNumber: queue.QUEUE_NUMBER,
+            patientName: queue.Appointment
+            ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
+            : 'N/A',
         
+            status: queue.STATUS,
+            age: queue.Appointment.AGE || 'N/A',
+            address: queue.Appointment.ADDRESS || 'NULL',
+            contactNumber: queue.Appointment.CONTACT_NUMBER || 'NULL',
+            type: queue.Appointment.TYPE,
+        }));
+
         // Send the response with the formatted queues
         res.status(200).json({
             queueManagementId: queueManagement.id,

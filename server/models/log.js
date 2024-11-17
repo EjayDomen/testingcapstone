@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database'); // Adjust the path as needed
 
-const Log = sequelize.define('logs', {
+const Log = sequelize.define('Log', {
     LOG_ID: {
         type: DataTypes.INTEGER,
         autoIncrement: true,

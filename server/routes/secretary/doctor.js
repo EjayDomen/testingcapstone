@@ -311,7 +311,6 @@ function safeReplacer(key, value) {
 
 
 
-
 //update doctor status
 router.put('/updateDoctorStatus/:id', auth('Secretary'), async (req, res) => {
     const { id } = req.params; // Doctor ID
@@ -387,6 +386,8 @@ router.delete('/deleteDoctor/:id', auth('Secretary'), async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
 
 
 module.exports = router;

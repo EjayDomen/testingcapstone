@@ -7,7 +7,9 @@ const QueueManagement = require('../../models/queueManagement');
 const Queue = require('../../models/queue');
 const Doctor = require('../../models/doctor');
 const Patient = require('../../models/patient');
+const Services = require('../../models/services');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const { Op, fn, col } = require('sequelize');
 const router = express.Router();
 const { createNotification } = require('../../services/notificationService');
@@ -15,14 +17,30 @@ const { createLog } = require('../../services/logServices');
 const formatInTimeZone = require('date-fns-tz').formatInTimeZone;
 
 
+
 const createPassword = (lastName) => {
     const timeZone = 'Asia/Manila';
     const todayDate = formatInTimeZone(new Date(), timeZone, 'yyyyMMdd'); // Formats date as YYYYMMDD
     return `${lastName}${todayDate}`;
-  };
+};
+
+// Function to send SMS
+const sendSMS = async (number, message) => {
+    try {
+        const response = await axios.post('https://api.semaphore.co/api/v4/messages', {
+            apikey: process.env.API_KEY,
+            number,
+            message
+        });
+        console.log(`SMS sent to ${number}:`, response.data);
+    } catch (error) {
+        console.error('Error sending SMS:', error.response ? error.response.data : error.message);
+    }
+};
 
 
-  router.post('/joinQueue', auth('Secretary'), async (req, res) => {
+
+router.post('/joinQueue', auth('Secretary'), async (req, res) => {
     const {
         PATIENT_ID = 'N/A',
         FIRST_NAME = 'N/A',
@@ -190,16 +208,17 @@ router.get('/patientList/appointmentList/:schedId/:Date', auth('Secretary'), asy
     const { schedId, Date } = req.params;
     try {
         const Appointments = await appointment.findAll({
-            where: { 
-                SCHEDULE_ID: schedId, 
-                APPOINTMENT_DATE: Date },
+            where: {
+                SCHEDULE_ID: schedId,
+                APPOINTMENT_DATE: Date
+            },
         });
         console.log(Appointments);
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
             action: 'Show all appointments by schedule ID.'
-          });   
+        });
         res.status(200).json(Appointments);
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -209,56 +228,56 @@ router.get('/patientList/appointmentList/:schedId/:Date', auth('Secretary'), asy
 
 // show all appointments
 router.get('/', auth('Secretary'), async (req, res) => {
-    try{
+    try {
         const Appointment = await appointment.findAll();
         res.status(200).json(Appointment);
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
             action: 'Show all appointments.'
-          });   
-    } catch (error){
-        res.status(400).json({error: error.message});
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
 // count all appointments
 router.get('/count', auth('Secretary'), async (req, res) => {
-    try{
+    try {
         const appointmentCount = await appointment.count();
         res.status(200).json({ appointmentCount });
-    } catch (error){
-        res.status(400).json({error: error.message});
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
 // show one appointment by id
-router.get('/:id', auth('Secretary'), async (req, res) =>{
-    const {id} = req.params;
-    try{
-        const Appointment = await appointment.findOne({where: {id}});
-        if(!Appointment){
-            return res.status(404).json({error: 'Appointment not Found'});
+router.get('/:id', auth('Secretary'), async (req, res) => {
+    const { id } = req.params;
+    try {
+        const Appointment = await appointment.findOne({ where: { id } });
+        if (!Appointment) {
+            return res.status(404).json({ error: 'Appointment not Found' });
         }
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
             action: `Viewed appointment details for Appointment ID: ${Appointment.id}.`
-          });          
+        });
         res.status(200).json(Appointment);
-    } catch (error){
-        res.status(400).json({error: error.message});
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
 //update appointment by id
-router.put('/:id', auth('Secretary'), async (req, res)=> {
-    const {id} = req.params;
-    const {DoctorName, AppointmentTime, Reason, ContactNumber, Type} = req.body;
-    try{
-        const Appointment = await appointment.findOne({ where: {id}});
-        if(!Appointment){
-            return res.status(404).json({error: 'Appointment not found'});
+router.put('/:id', auth('Secretary'), async (req, res) => {
+    const { id } = req.params;
+    const { DoctorName, AppointmentTime, Reason, ContactNumber, Type } = req.body;
+    try {
+        const Appointment = await appointment.findOne({ where: { id } });
+        if (!Appointment) {
+            return res.status(404).json({ error: 'Appointment not found' });
         }
         Appointment.DoctorName = DoctorName;
         Appointment.AppointmentTime = AppointmentTime;
@@ -270,10 +289,10 @@ router.put('/:id', auth('Secretary'), async (req, res)=> {
             userId: req.user.id,
             userType: 'Secretary',
             action: `Updated appointment details for Appointment ID: ${Appointment.id}.`
-          }); 
+        });
         res.status(200).json(Appointment);
-    } catch (error){
-        res.status(400).json({ error: error.message});
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -291,7 +310,7 @@ router.delete('/:id', auth('Secretary'), async (req, res) => {
             userId: req.user.id,
             userType: 'Secretary',
             action: `Deleted appointment details for Appointment ID: ${Appointment.id}.`
-          }); 
+        });
         res.status(204).send();
     } catch (error) {
         res.status(400).json({ error: error.message });
@@ -299,25 +318,24 @@ router.delete('/:id', auth('Secretary'), async (req, res) => {
 });
 
 //update appointment status by id
-router.put('/:id', auth('Secretary'), async (req, res)=> {
-    const {id} = req.params;
-    const {status} = req.body;
-    try{
-        const Appointment = await appointment.findOne({ where: { id }});
-        if (!Appointment)
-            {
-                return res.status(404).json({ error: 'Appointment not found' });
-            }
+router.put('/:id', auth('Secretary'), async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const Appointment = await appointment.findOne({ where: { id } });
+        if (!Appointment) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
         Appointment.status = status;
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
             action: `Updated appointment Status for Appointment ID: ${Appointment.id}.`
-          }); 
+        });
         await Appointment.save();
-        res.status(200).json(Appointment); 
-    } catch (error){
-        res.status(400).json({ error: error.message});
+        res.status(200).json(Appointment);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
 });
 
@@ -353,7 +371,7 @@ router.get('/today/today', auth('Secretary'), async (req, res) => {
             userId: req.user.id,
             userType: 'Secretary',
             action: `Showed today's queue.`
-          }); 
+        });
         res.status(200).json(todaysAppointments);
     } catch (error) {
         console.error(error);
@@ -375,9 +393,9 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             transaction
         });
 
-        const queueMan = await QueueManagement.findOne({where: {SCHEDULE_ID: scheduleId}});
+        const queueMan = await QueueManagement.findOne({ where: { SCHEDULE_ID: scheduleId } });
 
-        if(!queueMan){
+        if (!queueMan) {
             await transaction.rollback();
             return res.status(404).json({ error: 'No Queue Management found for the given schedule ID' });
         }
@@ -394,14 +412,14 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
         );
 
         await QueueManagement.update(
-            {STATUS: 'cancelled'},
+            { STATUS: 'cancelled' },
             { where: { SCHEDULE_ID: scheduleId }, transaction }
         );
 
         // Create notifications for each cancelled appointment
         for (const appt of appointments) {
             const message = `Appointment for ${appt.FIRST_NAME} ${appt.LAST_NAME} on ${appt.APPOINTMENT_DATE} at ${appt.APPOINTMENT_TIME} was cancelled.`;
-            
+
             await createNotification({
                 message: message,
                 ENTITY_ID: appt.id,
@@ -424,13 +442,13 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             status: 'unread',
             userId: secretaryId,
             USER_TYPE: 'Secretary',
-            TYPE:'FAILED'
+            TYPE: 'FAILED'
         });
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
             action: `Cancelled all appointments for schedule ID : ${scheduleId}.`
-          }); 
+        });
 
         // Commit the transaction
         await transaction.commit();
@@ -483,26 +501,134 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
         for (const appointment of appointmentsToUpdate) {
             appointment.APPOINTMENT_DATE = newDate; // Change to new date
             await appointment.save({ transaction: transactionAppointment }); // Save with the transaction
+            const doctor = await Doctor.findOne({ where: { id: appointment.DOCTOR_ID } });
+            const patient = await Patient.findOne({ where: { id: appointment.PATIENT_ID } }); // Assuming you have a Patient model
 
-            const doctor = await Doctor.findOne({where:{id:appointment.DOCTOR_ID}});
-            await createNotification({
-                message: `Your appointment with Dr. ${doctor.FIRST_NAME} ${doctor.LAST_NAME} has been rescheduled to ${newDate} at ${queueManagement.START_TIME}. Please take note of the changes.`,
-                ENTITY_ID: appointment.id,
-                ENTITY_TYPE: 'Appointment',
-                status: 'unread',
-                userId: appointment.PATIENT_ID, // Assuming this is the field for the patient ID
-                USER_TYPE: 'Patient',
-                TYPE: 'WARNING'
-            });
+            try {
+                // Fetch the service with primary key 2
+                const service = await Services.findByPk(2);
+                if (!service) {
+                    console.log('Service with ID 2 not found. No messages will be sent.');
+                    return;
+                }
+
+                // Get the service description as the template for the message
+                const messageTemplate = service.description;
+                if (!messageTemplate) {
+                    console.log('No message template found in service description. SMS cannot be sent.');
+                    return;
+                }
+
+                // Check if the service is active
+                if (!service.is_active) {
+                    console.log('SMS service is inactive. No messages will be sent.');
+                    return;
+                }
+
+                // Format the new date
+                const newDateObj = new Date(appointment.APPOINTMENT_DATE); // Ensure this is a valid ISO date
+                if (isNaN(newDateObj)) {
+                    throw new Error(`Invalid NEW_DATE: ${appointment.APPOINTMENT_DATE}`);
+                }
+                const newDate = newDateObj.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                });
+
+
+                const appointmentTime = new Date(`1970-01-01T${appointment.APPOINTMENT_TIME}`).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                });
+
+                // Extract doctor details
+                const doctorName = `${doctor.FIRST_NAME} ${doctor.LAST_NAME}`;
+
+                // Attempt to replace placeholders in the message template
+                let message;
+                try {
+                    message = eval('`' + messageTemplate + '`'); // Dynamically replace placeholders like ${doctorName}
+                } catch (error) {
+                    console.error('Error creating message from template:', error);
+                    // Fallback message if template processing fails
+                    message = `Your appointment with Dr. ${doctorName} has been rescheduled to ${newDate} at ${appointmentTime}. Please contact us for more details.`;
+
+                }
+                console.log(message);
+
+                // Create a notification
+                await createNotification({
+                    message,
+                    ENTITY_ID: appointment.id,
+                    ENTITY_TYPE: 'Appointment',
+                    status: 'unread',
+                    userId: appointment.PATIENT_ID,
+                    USER_TYPE: 'Patient',
+                    TYPE: 'WARNING',
+                });
+                console.log(message);
+
+                // Send SMS
+                if (patient && patient.CONTACT_NUMBER) {
+
+
+
+                    // Define the regular expression for valid Philippine phone numbers
+                    // Includes +639xxxxxxxxx, 09xxxxxxxxx, and 9xxxxxxxxx formats
+                    const isValidPhilippineNumber = /^(\+639|09|9)\d{9}$/;
+
+                    if (patient && patient.CONTACT_NUMBER && isValidPhilippineNumber.test(patient.CONTACT_NUMBER)) {
+                        // Send SMS
+                        await sendSMS(patient.CONTACT_NUMBER, message);
+
+                        // Log successful SMS send
+                        await createLog({
+                            userId: req.user.id,
+                            userType: 'Secretary',
+                            action: `SMS successfully sent to ${patient.CONTACT_NUMBER} for reschedule appointment`
+                        });
+
+                        console.log(`SMS sent successfully to ${patient.CONTACT_NUMBER}`);
+                    } else {
+                        // Log invalid phone number or missing phone number
+                        const contactNumberLog = patient && patient.CONTACT_NUMBER
+                            ? `Invalid phone number: ${patient.CONTACT_NUMBER}`
+                            : `No phone number provided for patient ID: ${appointment.PATIENT_ID}`;
+
+                        await createLog({
+                            userId: req.user.id,
+                            userType: 'Secretary',
+                            action: `Failed to send SMS for reschedule appointment. Reason: ${contactNumberLog}`
+                        });
+
+                        console.warn(contactNumberLog);
+                    }
+                } else {
+                    console.warn(`No phone number found for patient ID: ${appointment.PATIENT_ID}`);
+                }
+
+            } catch (error) {
+                console.error('Error processing appointment notification:', error);
+            }
+
+
+
+
+
         }
+
+
+
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
             action: `Reschedule all appointments for schedule ID ${scheduleId}, date : ${oldDate}.`
-          }); 
+        });
 
         queueManagement.DATE = newDate;
-        queueManagement.STATUS ='RESCHEDULED';
+        queueManagement.STATUS = 'RESCHEDULED';
         await queueManagement.save({ transaction: transactionQueue });
 
         // Commit the transaction if all updates are successful

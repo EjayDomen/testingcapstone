@@ -34,7 +34,7 @@ const port = process.env.PORT || 5000;
 
 // Enable CORS for all routes with specific configuration
 app.use(cors({
-    origin: ['https://acequeue.colcap.net'], // Replace with the frontend origin
+    origin: ['http://localhost:3000'], // Replace with the frontend origin
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     credentials: true  // Allow credentials (cookies, headers) to be sent
@@ -48,7 +48,7 @@ const server = require('http').createServer(app);
 // Initialize Socket.IO and bind it to the server instance
 const io = require('socket.io')(server, {
     cors: {
-        origin: 'https://acequeue.colcap.net', // Replace with the frontend origin
+        origin: 'http://localhost:3000', // Replace with the frontend origin
         methods: ['GET', 'POST'],
         allowedHeaders: ['Authorization'],
         credentials: true // Allow credentials (cookies, headers) to be sent
@@ -125,9 +125,9 @@ sequelize.sync()
     })
     .catch(err => console.error('Unable to connect to the database', err));
 
-// Start the Server
+// Start the server and listen for incoming requests
 server.listen(port, () => {
-    console.log(`Server is running on https://acequeue.colcap.net:${port}`);
+    console.log(`Server is running on http://localhost:${port}`);
 });
 
 // Error handling for the server

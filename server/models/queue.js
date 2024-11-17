@@ -3,7 +3,7 @@ const sequelize = require('../config/database');
 const Appointment = require('./appointment'); // Ensure correct path to the appointment model
 const QueueManagement = require('./queueManagement');
 
-const Queue = sequelize.define('queues', {
+const Queue = sequelize.define('Queue', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -15,7 +15,7 @@ const Queue = sequelize.define('queues', {
   },
   APPOINTMENT_ID: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   PATIENT_ID: {
     type: DataTypes.INTEGER,
@@ -53,14 +53,14 @@ const Queue = sequelize.define('queues', {
 Queue.belongsTo(Appointment, {
   foreignKey: {
     name: 'APPOINTMENT_ID', // Ensure foreign key consistency
-    allowNull: false
+    allowNull: true
   }
 });
 
 Appointment.hasOne(Queue, {
   foreignKey: {
     name: 'APPOINTMENT_ID', // Ensure foreign key consistency
-    allowNull: false
+    allowNull: true
   }
 });
 

@@ -41,7 +41,7 @@ const sendDailyReminders = async () => {
             where: {
                 APPOINTMENT_DATE: todayDate,
                 STATUS: {
-                    [Op.notIn]: ['cancelled', 'rescheduled']
+                    [Op.notIn]: ['cancelled', 'rescheduled', 'completed']
                 }
             },
             include: [{ model: Doctor }]  // Include the doctor's details
@@ -72,7 +72,7 @@ const sendDailyReminders = async () => {
 };
 
 // Schedule the reminder to run daily at 6 AM
-cron.schedule('22 0 * * *', () => {
+cron.schedule('00 5 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 });
@@ -82,7 +82,10 @@ router.get('/getTextMessage', async (req, res) => {
     try {
         const service = await Services.findByPk(1); // Fetch service with ID 1
         if (service) {
-            res.status(200).json({ message: service.description }); // Return the description field
+            res.status(200).json({
+                message: service.description,
+                is_active: service.is_active
+            });
         } else {
             res.status(404).json({ message: 'No message found' });
         }
@@ -127,6 +130,63 @@ router.post('/toggleSmsService', async (req, res) => {
         res.status(500).json({ error: 'Error updating service status' });
     }
 });
+
+
+
+// Endpoint to get the SMS message
+router.get('/getTextMessage2', async (req, res) => {
+    try {
+        const service = await Services.findByPk(2); // Fetch service with ID 1
+        if (service) {
+            res.status(200).json({
+                message: service.description,
+                is_active: service.is_active
+            });
+        } else {
+            res.status(404).json({ message: 'No message found' });
+        }
+    } catch (error) {
+        console.error('Error fetching message:', error);
+        res.status(500).json({ error: 'Error fetching message' });
+    }
+});
+
+// Endpoint to save the SMS message
+router.post('/saveTextMessage2', async (req, res) => {
+    const { message } = req.body;
+    try {
+        const service = await Services.findByPk(2); // Find service with ID 1
+        if (service) {
+            service.description = message; // Update the description field
+            await service.save();
+            res.status(200).json({ message: 'Message updated successfully' });
+        } else {
+            res.status(404).json({ error: 'Service with ID 1 not found' });
+        }
+    } catch (error) {
+        console.error('Error saving message:', error);
+        res.status(500).json({ error: 'Error saving message' });
+    }
+});
+
+router.post('/toggleSmsService2', async (req, res) => {
+    const { is_active } = req.body; // Ensure this is correctly received
+    try {
+        const service = await Services.findByPk(2); // Check if service ID is correct
+        if (service) {
+            service.is_active = is_active; // Update the field
+            await service.save(); // Save changes to the database
+            res.status(200).json({ message: `Service status updated to ${is_active}` });
+        } else {
+            res.status(404).json({ error: 'Service with ID 2 not found' });
+        }
+    } catch (error) {
+        console.error('Error updating service status:', error);
+        res.status(500).json({ error: 'Error updating service status' });
+    }
+});
+
+
 
 
 

@@ -144,7 +144,6 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
             await Queue.create({
                 QUEUE_NUMBER: 0,  // Queue number logic can be implemented here
                 APPOINTMENT_ID: newAppointment.id,
-                PATIENT_ID: newAppointment.PATIENT_ID,
                 QUEUE_MANAGEMENT_ID: queueManagement.id,
                 MESSAGE_ID: '',
                 PROGRESS: 'pending',
@@ -174,41 +173,37 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
     const patientId = req.user.id;
 
     try {
-        // Query to find all appointments for the logged-in patient where status is not 'completed'
         const patientAppointments = await appointment.findAll({
-            where: {
-                PATIENT_ID: patientId,
-                STATUS: { [Op.ne]: 'completed' }
-            },
+            where: { PATIENT_ID: patientId },
             include: [
                 {
                     model: Doctor,
-                    attributes: ['id', 'FIRST_NAME', 'MIDDLE_NAME','LAST_NAME','SUFFIX',  'EXPERTISE', 'HEALTH_PROFESSIONAL_ACRONYM']
+                    attributes: ['id', 'FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'EXPERTISE', 'HEALTH_PROFESSIONAL_ACRONYM']
                 },
                 {
                     model: Queue,
                     attributes: ['QUEUE_NUMBER'],
                     required: false
                 }
-            ]
+            ],
+            group: ['appointment.id'], // Group by the appointment's primary key
         });
+        
 
-        // Check if there are any non-completed appointments
         if (patientAppointments.length === 0) {
             return res.status(404).json({ message: 'No active appointments found for this patient.' });
         }
 
-        // Handle cases where queue details may be null and include the complete Doctor Name
-        const appointmentsWithQueue = patientAppointments.map(appointment => {
+        const appointmentsWithQueue = patientAppointments.map((appointment) => {
             const doctor = appointment.Doctor;
             const doctorName = doctor
-                ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}` : 'nonodoctor';
+                ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}`
+                : 'N/A';
 
             return {
                 ...appointment.toJSON(),
-                Queue: appointment.queue.QUEUE_NUMBER,
-                DoctorName: doctorName // Add the complete Doctor Name here
-                
+                Queue: appointment.Queue || { QUEUE_NUMBER: 'Not assigned' },
+                DoctorName: doctorName,
             };
         });
 
@@ -218,7 +213,6 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
         res.status(500).json({ error: 'An error occurred while retrieving the appointments.' });
     }
 });
-
 
 
 
