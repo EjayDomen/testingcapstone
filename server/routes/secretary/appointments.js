@@ -14,7 +14,6 @@ const { Op, fn, col } = require('sequelize');
 const router = express.Router();
 const { createNotification } = require('../../services/notificationService');
 const { createLog } = require('../../services/logServices');
-const { schedule } = require('node-cron');
 const formatInTimeZone = require('date-fns-tz').formatInTimeZone;
 
 
