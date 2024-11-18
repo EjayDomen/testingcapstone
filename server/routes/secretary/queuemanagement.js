@@ -14,7 +14,7 @@ const { formatInTimeZone } = require('date-fns-tz');
 const {createLog} = require('../../services/logServices');
 
 
-cron.schedule('* * * * *', async () => { // This cron job runs at midnight every day
+cron.schedule('00 00 * * *', async () => { // This cron job runs at midnight every day
     console.log('Running a daily check to create queues...');
     await createQueuesForWeek();
 });
