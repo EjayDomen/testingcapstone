@@ -223,6 +223,8 @@ function safeReplacer(key, value) {
                 where: { id },
                 transaction: t
             });
+             // Get the count of existing schedules for the doctor
+             const scheduleCount = await Schedule.count({ where: { DOCTOR_ID: doctor.id, is_deleted: false }, transaction: t });
 
             if (schedules && schedules.length) {
                 // Fetch current schedules for comparison
@@ -276,12 +278,14 @@ function safeReplacer(key, value) {
                                 SLOT_COUNT: slot_count
                             }, { transaction: t });
                         } else {
+                            // Create each schedule with SCHED_COUNTER starting from 1
                             await Schedule.create({
-                                DOCTOR_ID: id,
+                                DOCTOR_ID: doctor.id,
                                 DAY_OF_WEEK: day_of_week,
                                 START_TIME: start_time,
                                 END_TIME: end_time,
-                                SLOT_COUNT: slot_count
+                                SLOT_COUNT: slot_count,
+                                SCHED_COUNTER: scheduleCount + 1
                             }, { transaction: t });
                         }
                     }
