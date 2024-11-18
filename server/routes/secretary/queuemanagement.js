@@ -14,7 +14,7 @@ const { formatInTimeZone } = require('date-fns-tz');
 const {createLog} = require('../../services/logServices');
 
 
-cron.schedule('30 19 * * *', async () => { // This cron job runs at midnight every day
+cron.schedule('50 19 * * *', async () => { // This cron job runs at midnight every day
     console.log('Running a daily check to create queues...');
     await createQueuesForWeek();
 });
@@ -151,12 +151,22 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
             }
             return; // Stop further processing
         }
+
         // Fetch all appointments with the given scheduleId and date
         const appointments = await Appointment.findAll({
             where: { SCHEDULE_ID: scheduleId, APPOINTMENT_DATE: date },
             order: [['createdAt', 'ASC']] // Assuming `createdAt` is the field that indicates when the appointment was booked
         });
 
+        // if (!appointments.length) {
+        //     await transaction.rollback();
+        //     if (res) {
+        //         return res.status(404).json({ message: 'No appointments found for the given schedule ID' });
+        //     }
+        //     return;
+        // }
+
+        // Check if the queue management entry already exists
         let queueManagement = await QueueManagement.findOne({
             where: { SCHEDULE_ID: scheduleId, DATE: date},
             transaction
