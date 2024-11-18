@@ -37,6 +37,19 @@ async function createQueuesForWeek() {
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     try {
+        const currentDayOfWeek = today.getDay();
+        const currentDayName = daysOfWeek[currentDayOfWeek];
+
+        // Update schedules for today if inactive
+        await Schedule.update(
+            { is_actived: true }, // Set the schedule as active
+            {
+                where: {
+                    DAY_OF_WEEK: currentDayName, // Match today's day name
+                    is_actived: false            // Only update inactive schedules
+                }
+            }
+        );
         // Loop through the next 7 days
         for (let i = 0; i < 7; i++) {
             // Calculate the date for each day in the week
