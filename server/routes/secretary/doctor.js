@@ -224,7 +224,7 @@ function safeReplacer(key, value) {
                 transaction: t
             });
              // Get the count of existing schedules for the doctor
-             const scheduleCount = await Schedule.count({ where: { DOCTOR_ID: doctor.id, is_deleted: false }, transaction: t });
+             const scheduleCount = await Schedule.count({ where: { DOCTOR_ID: id, is_deleted: false }, transaction: t });
 
             if (schedules && schedules.length) {
                 // Fetch current schedules for comparison
