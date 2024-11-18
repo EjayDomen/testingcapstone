@@ -280,7 +280,7 @@ function safeReplacer(key, value) {
                         } else {
                             // Create each schedule with SCHED_COUNTER starting from 1
                             await Schedule.create({
-                                DOCTOR_ID: doctor.id,
+                                DOCTOR_ID: id,
                                 DAY_OF_WEEK: day_of_week,
                                 START_TIME: start_time,
                                 END_TIME: end_time,
