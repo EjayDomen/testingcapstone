@@ -478,6 +478,7 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
     const transactionAppointment = await sequelize.transaction();
 
     try {
+
         const queueManagement = await QueueManagement.findOne({
             where: {
                 SCHEDULE_ID: scheduleId,
@@ -495,13 +496,9 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
             transaction: transactionAppointment // Fixed here to include the transaction
         });
 
-        // if (appointmentsToUpdate.length === 0) {
-        //     await transactionAppointment.rollback();
-        //     return res.status(404).json({ error: 'No appointments found for the given schedule ID and old date' });
-        // }
         await schedule.update(
             { is_actived: false},
-            {where:{SCHEDULE_ID:scheduleId}, transaction}
+            {where:{SCHEDULE_ID:scheduleId}, transactionQueue}
         );
 
         // Update each appointment to the new date
