@@ -416,10 +416,7 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             { where: { SCHEDULE_ID: scheduleId }, transaction }
         );
 
-        await schedule.update(
-            { is_actived: false},
-            {where:{SCHEDULE_ID:scheduleId}, transaction}
-        );
+        
 
 
         // Create notifications for each cancelled appointment
@@ -498,10 +495,14 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
             transaction: transactionAppointment // Fixed here to include the transaction
         });
 
-        if (appointmentsToUpdate.length === 0) {
-            await transactionAppointment.rollback();
-            return res.status(404).json({ error: 'No appointments found for the given schedule ID and old date' });
-        }
+        // if (appointmentsToUpdate.length === 0) {
+        //     await transactionAppointment.rollback();
+        //     return res.status(404).json({ error: 'No appointments found for the given schedule ID and old date' });
+        // }
+        await schedule.update(
+            { is_actived: false},
+            {where:{SCHEDULE_ID:scheduleId}, transaction}
+        );
 
         // Update each appointment to the new date
         for (const appointment of appointmentsToUpdate) {
