@@ -85,6 +85,11 @@ async function createQueuesForWeek() {
         }
     } catch (error) {
         console.error('Error automating queue creation for the week:', error);
+        await createLog({
+            userId: 'System',
+            userType: 'System',
+            action: `Error creating for a week.`
+          }); 
     }
 }
 
