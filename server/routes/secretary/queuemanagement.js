@@ -14,10 +14,11 @@ const { formatInTimeZone } = require('date-fns-tz');
 const {createLog} = require('../../services/logServices');
 
 
-cron.schedule('0 0 * * *', async () => { // This cron job runs at midnight every day
+cron.schedule('40 10 * * *', async () => { // This cron job runs at 10:40 AM PH time every day
     console.log('Running a daily check to create queues...');
     await createQueuesForWeek();
 });
+
 
 
 async function getSecretaryId() {
