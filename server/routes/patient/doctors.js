@@ -81,7 +81,7 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
     try {
         // Find schedules associated with the specified doctor
         const schedules = await Schedule.findAll({
-            where: { DOCTOR_ID: doctorId, is_deleted: false },
+            where: { DOCTOR_ID: doctorId, is_deleted: false, is_actived: true },
             include: [
                 {
                     model: Doctors,

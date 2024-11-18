@@ -10,7 +10,7 @@ const Patient = require('../../models/patient');
 const Services = require('../../models/services');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const { Op, fn, col } = require('sequelize');
+const { Op, fn, col, where } = require('sequelize');
 const router = express.Router();
 const { createNotification } = require('../../services/notificationService');
 const { createLog } = require('../../services/logServices');
@@ -414,6 +414,11 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
         await QueueManagement.update(
             { STATUS: 'cancelled' },
             { where: { SCHEDULE_ID: scheduleId }, transaction }
+        );
+
+        await schedule.update(
+            { is_actived: false},
+            {where:{SCHEDULE_ID:scheduleId}, transaction}
         );
 
 

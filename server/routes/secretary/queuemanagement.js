@@ -72,42 +72,58 @@ async function createQueuesForWeek() {
     }
 }
 
-//FUNCTION FOR CREATING A QUEUE TODAY
 async function createQueuesForToday() {
-    // Set the desired time zone
-    const timeZone = 'Asia/Manila'; // or '+08:00'
+    const timeZone = 'Asia/Manila'; // Set the time zone
+    const today = new Date(); // Get current date and time
+    const dayOfWeekToday = today.toLocaleDateString('en-US', { weekday: 'long', timeZone }); // Get today's day name
 
-    // Get the current date and time in the specified time zone
-    const today = formatInTimeZone(new Date(), timeZone, 'yyyy-MM-dd');
-    
-
-    const dayOfWeek = new Date(today).getDay(); // Get day of the week from the adjusted date
+    // Define all days of the week
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-    // Get the day name based on the day number
-    const dayName = daysOfWeek[dayOfWeek];
-
     try {
-        const schedules = await Schedule.findAll({
-            where: {
-                DAY_OF_WEEK: dayName,
-                is_deleted: false
-            }
-        });
+        // Iterate through each day of the week
+        for (const dayOfWeek of daysOfWeek) {
+            if (dayOfWeek === dayOfWeekToday) {
+                // Only update schedules if the current day is the day to deactivate
+                await Schedule.update(
+                    { is_actived: true }, // Set the schedule as inactive
+                    {
+                        where: {
+                            DAY_OF_WEEK: dayOfWeek, // Match today's day name
+                            is_actived: false        // Only update active schedules
+                        }
+                    }
+                );
 
-        for (const schedule of schedules) {
-            // Directly call the function to handle queue creation
-            await createOrUpdateQueue(schedule.SCHEDULE_ID, today); // Use the formatted date
+                // Fetch the schedules for the current day (today)
+                const schedules = await Schedule.findAll({
+                    where: {
+                        DAY_OF_WEEK: dayOfWeek,  // Match today's day name
+                        is_deleted: false,       // Ensure the schedule is not deleted
+                        is_actived: true        // Only fetch schedules that were activated
+                    }
+                });
+
+                // Create queues for the fetched schedules
+                for (const schedule of schedules) {
+                    await createOrUpdateQueue(schedule.SCHEDULE_ID, today.toISOString().split('T')[0]); // Pass today's date
+                }
+
+                // Log the operation
+                await createLog({
+                    userId: 'System',
+                    userType: 'System',
+                    action: `Processed queues for ${dayOfWeek}. Marked schedules inactive and created queues.`,
+                });
+
+                console.log(`Queues for ${dayOfWeek} processed.`);
+            }
         }
-        await createLog({
-            userId: 'System',
-            userType: 'System',
-            action: `Created queues for this day ${today}.`
-          }); 
     } catch (error) {
         console.error('Error automating queue creation:', error);
     }
 }
+
 
 
 async function createOrUpdateQueue(scheduleId, date, res = null) {
@@ -134,22 +150,12 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
             }
             return; // Stop further processing
         }
-
         // Fetch all appointments with the given scheduleId and date
         const appointments = await Appointment.findAll({
             where: { SCHEDULE_ID: scheduleId, APPOINTMENT_DATE: date },
             order: [['createdAt', 'ASC']] // Assuming `createdAt` is the field that indicates when the appointment was booked
         });
 
-        // if (!appointments.length) {
-        //     await transaction.rollback();
-        //     if (res) {
-        //         return res.status(404).json({ message: 'No appointments found for the given schedule ID' });
-        //     }
-        //     return;
-        // }
-
-        // Check if the queue management entry already exists
         let queueManagement = await QueueManagement.findOne({
             where: { SCHEDULE_ID: scheduleId, DATE: date},
             transaction

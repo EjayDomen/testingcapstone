@@ -42,6 +42,10 @@ const schedules = sequelize.define('schedules', {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
     },
+    is_actived: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
 }, {
     tableName: 'schedules',
     timestamps: false

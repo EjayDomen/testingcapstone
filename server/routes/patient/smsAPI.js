@@ -9,6 +9,7 @@ const { Op } = require('sequelize');
 const Doctor = require('../../models/doctor');
 const Appointment = require('../../models/appointment');
 const Services = require('../../models/services');
+const { createLog } = require('../../services/logServices');
 
 // Function to send SMS
 const sendSMS = async (number, message) => {
@@ -18,9 +19,20 @@ const sendSMS = async (number, message) => {
             number,
             message
         });
+        // Log the action
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `SMS sent to ${number}}.`
+        });
         console.log(`SMS sent to ${number}:`, response.data);
     } catch (error) {
         console.error('Error sending SMS:', error.response ? error.response.data : error.message);
+        await createLog({
+            userId: req.user.id,
+            userType: 'Secretary',
+            action: `Error sending SMS`
+        });
     }
 };
 
@@ -270,7 +282,7 @@ router.post('/send-reminder', async (req, res) => {
     try {
         // Sending the SMS via Semaphore API
         const response = await axios.post('https://api.semaphore.co/api/v4/messages', {
-            apikey: 'API_KEY',
+            apikey: process.env.API_KEY,
             number,
             message,
             sendername: sendername || 'SEMAPHORE',  // Optional sender name
