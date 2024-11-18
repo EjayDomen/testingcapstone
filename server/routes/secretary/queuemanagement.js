@@ -14,10 +14,7 @@ const { formatInTimeZone } = require('date-fns-tz');
 const {createLog} = require('../../services/logServices');
 
 
-cron.schedule('10 19 * * *', async () => { // This cron job runs at 3:45 PM PH time every day
-    console.log('Running a daily check to create queues...');
-    await createQueuesForWeek;
-});
+cron.schedule('15 19 * * *',createQueuesForWeek);
 
 
 
