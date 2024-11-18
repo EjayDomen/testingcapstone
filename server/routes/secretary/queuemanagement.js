@@ -14,10 +14,11 @@ const { formatInTimeZone } = require('date-fns-tz');
 const {createLog} = require('../../services/logServices');
 
 
-cron.schedule('50 10 * * *', async () => { // This cron job runs at 10:40 AM PH time every day
+cron.schedule('00 16 * * *', async () => { // This cron job runs at 3:45 PM PH time every day
     console.log('Running a daily check to create queues...');
     await createQueuesForWeek();
 });
+
 
 
 
@@ -37,6 +38,20 @@ async function createQueuesForWeek() {
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     try {
+        const currentDayOfWeek = today.getDay();
+        const currentDayName = daysOfWeek[currentDayOfWeek];
+
+         // Update schedules for today if they are inactive
+         await Schedule.update(
+            { is_actived: true }, // Set the schedule as active
+            {
+                where: {
+                    DAY_OF_WEEK: currentDayName, // Match today's day name
+                    is_actived: false            // Only update inactive schedules
+                }
+            }
+        );
+        
         // Loop through the next 7 days
         for (let i = 0; i < 7; i++) {
             // Calculate the date for each day in the week
