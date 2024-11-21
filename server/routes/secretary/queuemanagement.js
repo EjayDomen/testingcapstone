@@ -633,7 +633,7 @@ router.get('/today/todayQueue', auth('Secretary'), async (req, res) => {
         // Format the queue details
         const formattedQueues = queues.map((queue, index) => ({
             queueNumber: queue.QUEUE_NUMBER,
-            patientName: queue.Appointment ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.LAST_NAME}` : 'N/A',
+            patientName: queue.appointment ? `${queue.appointment.FIRST_NAME} ${queue.appointment.LAST_NAME}` : 'N/A',
             status: queue.STATUS,
         }));
 
