@@ -256,12 +256,8 @@ router.post('/:appointmentId/cancel', auth('Patient'), async (req, res) => {
 
 // Route to create patient feedback
 router.post('/feedback', auth('Patient'), async (req, res) => {
-    const { rating, comments='n/a' } = req.body;
+    const { rating = 0, comments='n/a' } = req.body;
     const patientId = req.user.id;
-
-    if (!comments || !rating) {
-        return res.status(400).json({ error: 'Feedback and rating are required' });
-    }
 
     try {
         // Create a new feedback entry
