@@ -244,7 +244,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
         const secretaryId = await getSecretaryId(); // Fetch the secretary ID
 
         // Update the secretary message
-        const secretaryMessage = `Queue successfully created for Dr. ${doctorName} on ${appointmentDate} at ${startTime}.`;
+        const secretaryMessage = `Queue successfully created for ${doctorName} on ${appointmentDate} at ${startTime}.`;
 
 
         await createNotification({
