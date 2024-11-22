@@ -56,6 +56,11 @@ router.post('/addDoctor', auth('Secretary'), async (req, res) => {
                 if (!day_of_week || !start_time || !end_time || !slot_count) {
                     throw new Error('All schedule fields are required');
                 }
+
+                if (startTimeDate > endTimeDate) {
+                    return res.status(400).json({ error: 'Start time cannot be later than end time.' });
+                }
+                
     
                 // Check if a schedule already exists with overlapping time for the doctor
                 const overlappingSchedule = await Schedule.findOne({
