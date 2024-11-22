@@ -10,6 +10,7 @@ const Doctor = require('../../models/doctor');
 const Appointment = require('../../models/appointment');
 const Services = require('../../models/services');
 const { createLog } = require('../../services/logServices');
+const { format } = require('date-fns-tz');
 
 // Function to send SMS
 const sendSMS = async (number, message) => {
@@ -45,8 +46,11 @@ const sendDailyReminders = async () => {
             return;
         }
 
+
+        const hongKongTimeZone = 'Asia/Hong_Kong';
         const today = new Date();
-        const todayDate = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const todayDate = format(today, 'yyyy-MM-dd', { timeZone: hongKongTimeZone }); // YYYY-MM-DD in Hong Kong timezone
+
 
         // Get appointments scheduled for today
         const appointments = await Appointment.findAll({
@@ -84,7 +88,7 @@ const sendDailyReminders = async () => {
 };
 
 // Schedule the reminder to run daily at 6 AM
-cron.schedule('00 5 * * *', () => {
+cron.schedule('14 23 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 });
