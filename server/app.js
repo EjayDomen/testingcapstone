@@ -29,7 +29,6 @@ const queuePatientRoutes = require('./routes/patient/queue');
 const notificationPatientRoutes = require('./routes/patient/notification');
 const smsRoutes = require('./routes/patient/smsAPI');
 
-
 const app = express();
 const port = process.env.PORT || 5000;
 
