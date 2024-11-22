@@ -32,7 +32,7 @@ router.get('/', auth('Secretary'), async (req, res) => {
 // PUT endpoint to update a secretary by ID
 router.put('/profileUpdate', auth('Secretary'), async (req, res) => {
     const id = req.user.id;
-    const { FIRST_NAME, MIDDLE_NAME, PASSWORD, CONTACT_NUMBER, SCHEDULE, ROOMNUMBER, DATE_OF_BIRTH, GENDER, AGE, NOTES, EMAIL, DEPARTMENT } = req.body;
+    const { FIRST_NAME, MIDDLE_NAME, LAST_NAME, PASSWORD, CONTACT_NUMBER, SCHEDULE, ROOMNUMBER, DATE_OF_BIRTH, GENDER, AGE, NOTES, EMAIL, DEPARTMENT } = req.body;
     
     try {
         // Find the secretary by their ID
@@ -50,6 +50,7 @@ router.put('/profileUpdate', auth('Secretary'), async (req, res) => {
         // Update the secretary fields
         secretary.FIRST_NAME = FIRST_NAME;
         secretary.MIDDLE_NAME = MIDDLE_NAME;
+        secretary.LAST_NAME = LAST_NAME;
         secretary.PASSWORD = hashedPassword; // Use the hashed password
         secretary.SCHEDULE = SCHEDULE;
         secretary.ROOMNUMBER = ROOMNUMBER;
