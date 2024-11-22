@@ -46,11 +46,9 @@ const sendDailyReminders = async () => {
             return;
         }
 
-
         const hongKongTimeZone = 'Asia/Hong_Kong';
         const today = new Date();
         const todayDate = format(today, 'yyyy-MM-dd', { timeZone: hongKongTimeZone }); // YYYY-MM-DD in Hong Kong timezone
-
 
         // Get appointments scheduled for today
         const appointments = await Appointment.findAll({
@@ -60,11 +58,11 @@ const sendDailyReminders = async () => {
                     [Op.notIn]: ['cancelled', 'rescheduled', 'completed']
                 }
             },
-            include: [{ model: Doctor }]  // Include the doctor's details
+            include: [{ model: Doctor }] // Include the doctor's details
         });
 
         // Loop through appointments and send reminders
-        appointments.forEach(appointment => {
+        for (const appointment of appointments) {
             const patientName = `${appointment.FIRST_NAME} ${appointment.LAST_NAME}`;
             const doctorName = `${appointment.Doctor.FIRST_NAME} ${appointment.Doctor.LAST_NAME}`;
             const appointmentTime = new Date(`1970-01-01T${appointment.APPOINTMENT_TIME}`).toLocaleTimeString([], {
@@ -80,18 +78,24 @@ const sendDailyReminders = async () => {
                 : `Hello ${patientName}, you have an appointment today with Dr. ${doctorName} at ${appointmentTime}. Please visit the website to get your QR code for easy check-in at the clinic.`;
 
             // Send SMS
-            sendSMS(contactNumber, message);
-        });
+            try {
+                await sendSMS(contactNumber, message);
+                console.log(`Reminder sent to ${contactNumber}`);
+            } catch (smsError) {
+                console.error(`Failed to send SMS to ${contactNumber}:`, smsError);
+            }
+        }
     } catch (error) {
         console.error('Error fetching appointments or sending SMS:', error);
     }
 };
 
 // Schedule the reminder to run daily at 6 AM
-cron.schedule('14 23 * * *', () => {
+cron.schedule('46 23 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 });
+
 
 // Endpoint to get the SMS message
 router.get('/getTextMessage', async (req, res) => {
