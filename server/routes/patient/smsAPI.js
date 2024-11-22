@@ -79,12 +79,12 @@ const sendDailyReminders = async () => {
     }
 };
 
-cron.schedule('51 02 * * *', () => {
+cron.schedule('00 03 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 }, {
     scheduled: true,
-    timezone: "Asia/Manila" // Set to Manila timezone
+    timezone: "Asia/Hong_Kong" // Set to Manila timezone
 });
 
 // Endpoint to get the SMS message
