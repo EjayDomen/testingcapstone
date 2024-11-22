@@ -79,12 +79,13 @@ const sendDailyReminders = async () => {
     }
 };
 
-// Schedule the reminder to run daily at 6 AM
-cron.schedule('34 02 * * *', () => {
+cron.schedule('51 02 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
+}, {
+    scheduled: true,
+    timezone: "Asia/Manila" // Set to Manila timezone
 });
-
 
 // Endpoint to get the SMS message
 router.get('/getTextMessage', async (req, res) => {
