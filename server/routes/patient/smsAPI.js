@@ -91,7 +91,7 @@ const sendDailyReminders = async () => {
 };
 
 // Schedule the reminder to run daily at 6 AM
-cron.schedule('54 23 * * *', () => {
+cron.schedule('15 0 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 });
