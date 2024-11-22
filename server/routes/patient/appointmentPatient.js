@@ -202,7 +202,7 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
 
             return {
                 ...appointment.toJSON(),
-                Queue: appointment.queue.QUEUE_NUMBER,
+                Queue: appointment.queue.QUEUE_NUMBER || '0',
                 DoctorName: doctorName,
             };
         });
