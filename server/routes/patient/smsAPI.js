@@ -39,6 +39,8 @@ const sendDailyReminders = async () => {
         const today = new Date();
         const todayDate = format(today, 'yyyy-MM-dd', { timeZone: hongKongTimeZone }); // YYYY-MM-DD in Hong Kong timezone
 
+        console.log(hongKongTimeZone);
+
         // Get appointments scheduled for today
         const appointments = await Appointment.findAll({
             where: {
@@ -79,7 +81,7 @@ const sendDailyReminders = async () => {
     }
 };
 
-cron.schedule('00 03 * * *', () => {
+cron.schedule('13 3 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 }, {
