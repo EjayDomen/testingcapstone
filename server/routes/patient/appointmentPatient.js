@@ -144,6 +144,7 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
             await Queue.create({
                 QUEUE_NUMBER: 0,  // Queue number logic can be implemented here
                 APPOINTMENT_ID: newAppointment.id,
+                PATIENT_ID: patientId,
                 QUEUE_MANAGEMENT_ID: queueManagement.id,
                 MESSAGE_ID: '',
                 PROGRESS: 'pending',
@@ -199,10 +200,13 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
             const doctorName = doctor
                 ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}`
                 : 'N/A';
+            
+                const queueNumber = appointment.queue ? appointment.queue.QUEUE_NUMBER : '0'; // Default to '0' if no queue exists
+
 
             return {
                 ...appointment.toJSON(),
-                Queue: appointment.queue.QUEUE_NUMBER || '0',
+                Queue: queueNumber,
                 DoctorName: doctorName,
             };
         });
