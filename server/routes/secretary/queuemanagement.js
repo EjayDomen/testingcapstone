@@ -14,10 +14,17 @@ const { formatInTimeZone } = require('date-fns-tz');
 const {createLog} = require('../../services/logServices');
 
 
-cron.schedule('00 00 * * *', async () => { // This cron job runs at midnight every day
+cron.schedule('00 00 * * *', async () => {
     console.log('Running a daily check to create queues...');
-    await createQueuesForWeek();
-});
+    try {
+      await createQueuesForWeek();
+    } catch (error) {
+      console.error('Error creating queues:', error);
+    }
+  }, {
+    scheduled: true,
+    timezone: "Asia/Manila" // Set to Manila timezone
+  });
 
 
 
