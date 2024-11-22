@@ -20,20 +20,9 @@ const sendSMS = async (number, message) => {
             number,
             message
         });
-        // Log the action
-        await createLog({
-            userId: req.user.id,
-            userType: 'Secretary',
-            action: `SMS sent to ${number}}.`
-        });
         console.log(`SMS sent to ${number}:`, response.data);
     } catch (error) {
         console.error('Error sending SMS:', error.response ? error.response.data : error.message);
-        await createLog({
-            userId: req.user.id,
-            userType: 'Secretary',
-            action: `Error sending SMS`
-        });
     }
 };
 
@@ -91,7 +80,7 @@ const sendDailyReminders = async () => {
 };
 
 // Schedule the reminder to run daily at 6 AM
-cron.schedule('15 0 * * *', () => {
+cron.schedule('10 02 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
 });
