@@ -47,7 +47,7 @@ router.get('/details', async (req, res) => {
             address: appointment.ADDRESS,
             sex: appointment.SEX,
             date: appointment.APPOINTMENT_DATE,
-            doctorFullName: `Dr. ${appointment.doctor.FIRST_NAME} ${appointment.doctor.LAST_NAME}` // Full name of the doctor
+            doctorFullName: `Dr. ${appointment.Doctor.FIRST_NAME} ${appointment.Doctor.LAST_NAME}` // Full name of the doctor
 
         }));
 
