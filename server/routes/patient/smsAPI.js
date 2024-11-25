@@ -37,7 +37,14 @@ const sendDailyReminders = async () => {
 
         const hongKongTimeZone = 'Asia/Hong_Kong';
         const today = new Date();
-        const todayDate = format(today, 'yyyy-MM-dd', { timeZone: hongKongTimeZone }); // YYYY-MM-DD in Hong Kong timezone
+
+        // Add one day
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        const todayDate = format(tomorrow, 'yyyy-MM-dd', { timeZone: hongKongTimeZone }); // YYYY-MM-DD in Hong Kong timezone
+        console.log(todayDate);
+
 
         console.log(hongKongTimeZone);
 
