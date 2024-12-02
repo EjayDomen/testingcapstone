@@ -3,14 +3,14 @@ const router = express.Router();
 const axios = require('axios');
 const cron = require('node-cron');
 const randomString = require('randomstring');
+const { format } = require('date-fns-tz');
+
 
 const sequelize = require('../../config/database'); // Import the Sequelize instance
 const { Op } = require('sequelize');
 const Doctor = require('../../models/doctor');
 const Appointment = require('../../models/appointment');
 const Services = require('../../models/services');
-const { createLog } = require('../../services/logServices');
-const { format } = require('date-fns-tz');
 
 // Function to send SMS
 const sendSMS = async (number, message) => {
@@ -26,6 +26,13 @@ const sendSMS = async (number, message) => {
     }
 };
 
+// Define an endpoint for sending SMS
+router.post('/send-sms', async (req, res) => {
+    const { number, message } = req.body;  // Get number and message from request body
+    sendSMS(number, message);
+    res.status(200).send('SMS sent successfully');
+});
+
 // Function to get today's appointments and send reminders
 const sendDailyReminders = async () => {
     try {
@@ -37,16 +44,12 @@ const sendDailyReminders = async () => {
 
         const hongKongTimeZone = 'Asia/Hong_Kong';
         const today = new Date();
-
         // Add one day
         const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+        tomorrow.setDate(today.getDate());
 
         const todayDate = format(tomorrow, 'yyyy-MM-dd', { timeZone: hongKongTimeZone }); // YYYY-MM-DD in Hong Kong timezone
         console.log(todayDate);
-
-
-        console.log(hongKongTimeZone);
 
         // Get appointments scheduled for today
         const appointments = await Appointment.findAll({
@@ -56,13 +59,13 @@ const sendDailyReminders = async () => {
                     [Op.notIn]: ['cancelled', 'rescheduled', 'completed']
                 }
             },
-            include: [{ model: Doctor }] // Include the doctor's details
+            include: [{ model: Doctor }]  // Include the doctor's details
         });
 
         // Loop through appointments and send reminders
-        for (const appointment of appointments) {
+        appointments.forEach(appointment => {
             const patientName = `${appointment.FIRST_NAME} ${appointment.LAST_NAME}`;
-            const doctorName = `${appointment.Doctor.FIRST_NAME} ${appointment.Doctor.LAST_NAME}`;
+            const doctorName = `${appointment.doctor.FIRST_NAME} ${appointment.doctor.LAST_NAME}`;
             const appointmentTime = new Date(`1970-01-01T${appointment.APPOINTMENT_TIME}`).toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -73,27 +76,29 @@ const sendDailyReminders = async () => {
             // Replace placeholders in the service description with actual data
             const message = service.description
                 ? eval('`' + service.description + '`')
-                : `Hello ${patientName}, you have an appointment today with Dr. ${doctorName} at ${appointmentTime}. Please visit the website to get your QR code for easy check-in at the clinic.`;
+                    .replace('PATIENT', patientName)
+                    .replace('DOCTOR', doctorName)
+                    .replace('APPOINTMENTTIME', appointmentTime)
+                : `Hello PATIENT , you have an appointment today with Dr. DOCTOR at APPOINTMENTTIME. Please visit the website to get your QR code for easy check-in at the clinic.`
+                    .replace('PATIENT', patientName)
+                    .replace('DOCTOR', doctorName)
+                    .replace('APPOINTMENTTIME', appointmentTime);
+
 
             // Send SMS
-            try {
-                await sendSMS(contactNumber, message);
-                console.log(`Reminder sent to ${contactNumber}`);
-            } catch (smsError) {
-                console.error(`Failed to send SMS to ${contactNumber}:`, smsError);
-            }
-        }
+            sendSMS(contactNumber, message);
+            console.log(message);
+        });
     } catch (error) {
         console.error('Error fetching appointments or sending SMS:', error);
     }
 };
 
-cron.schedule('00 06 * * *', () => {
+// Schedule the reminder to run daily at 6 AM
+cron.schedule('00 6 * * *', () => {
     console.log('Running daily reminder job at 6 AM');
     sendDailyReminders();
-}, {
-    scheduled: true,
-    timezone: "Asia/Hong_Kong" // Set to Manila timezone
+
 });
 
 // Endpoint to get the SMS message
@@ -289,7 +294,7 @@ router.post('/send-reminder', async (req, res) => {
     try {
         // Sending the SMS via Semaphore API
         const response = await axios.post('https://api.semaphore.co/api/v4/messages', {
-            apikey: process.env.API_KEY,
+            apikey: 'API_KEY',
             number,
             message,
             sendername: sendername || 'SEMAPHORE',  // Optional sender name
@@ -332,7 +337,7 @@ async function sendSms(phone) {
 }
 
 // Route to send SMS
-router.post('/send-sms', async (req, res) => {
+router.post('/send-smssss', async (req, res) => {
     const { phone } = req.body;
 
     // Validate required fields
@@ -348,6 +353,4 @@ router.post('/send-sms', async (req, res) => {
     }
 });
 
-
 module.exports = router;
-
