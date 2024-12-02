@@ -20,8 +20,11 @@ router.post('/update-queue-status', async (req, res) => {
         }
 
         // Check if the queue status is already 'attended'
-        if (queue.STATUS === 'attended') {
+        if (queue.STATUS === 'waiting') {
             return res.status(400).json({ message: 'Queue has already been attended. Update not allowed.' });
+        }
+        if (queue.STATUS === 'completed') {
+            return res.status(400).json({ message: 'Queue has already been completed. Update not allowed.' });
         }
 
         // Fetch the maximum queue number for the same queue management ID
@@ -35,7 +38,7 @@ router.post('/update-queue-status', async (req, res) => {
         // Update the queue with the new status and queue number
         const result = await Queue.update(
             {
-                STATUS: 'attended',
+                STATUS: 'waiting',
                 QUEUE_NUMBER: nextQueueNumber
             },
             { where: { APPOINTMENT_ID: appointmentId } }

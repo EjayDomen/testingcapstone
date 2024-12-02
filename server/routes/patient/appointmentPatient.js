@@ -148,7 +148,7 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
                 QUEUE_MANAGEMENT_ID: queueManagement.id,
                 MESSAGE_ID: '',
                 PROGRESS: 'pending',
-                STATUS: 'unattend',
+                STATUS: 'pending',
                 SERVED: 'no',
                 TYPE: 'ONLINE'
             }, { transaction });
