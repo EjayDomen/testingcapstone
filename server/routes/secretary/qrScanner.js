@@ -20,7 +20,7 @@ router.post('/update-queue-status', async (req, res) => {
         }
 
         // Check if the queue status is already 'attended'
-        if (queue.STATUS === 'waiting') {
+        if (queue.STATUS === 'attended') {
             return res.status(400).json({ message: 'Queue has already been attended. Update not allowed.' });
         }
 
@@ -35,7 +35,7 @@ router.post('/update-queue-status', async (req, res) => {
         // Update the queue with the new status and queue number
         const result = await Queue.update(
             {
-                STATUS: 'waiting',
+                STATUS: 'attended',
                 QUEUE_NUMBER: nextQueueNumber
             },
             { where: { APPOINTMENT_ID: appointmentId } }

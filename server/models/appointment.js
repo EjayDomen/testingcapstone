@@ -121,6 +121,8 @@ Appointment.belongsTo(patient, {
     }
 });
 
+Appointment
+
 
 
 module.exports = Appointment;  // Corrected from modules.exports to module.exports

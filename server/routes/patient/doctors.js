@@ -5,6 +5,8 @@ const Secretary = require('../../models/secretary');
 const auth = require('../../middleware/auth');
 const router = express.Router();
 const Schedule = require('../../models/schedule');
+const Appointment = require('../../models/appointment');
+
 
 
 // view all doctor
@@ -81,7 +83,7 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
     try {
         // Find schedules associated with the specified doctor
         const schedules = await Schedule.findAll({
-            where: { DOCTOR_ID: doctorId, is_deleted: false, is_actived: true },
+            where: { DOCTOR_ID: doctorId, is_deleted: false },
             include: [
                 {
                     model: Doctors,
@@ -128,6 +130,49 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// Endpoint to get the count of appointments for a specific schedule on a specific date
+router.get('/appointments/count/:doctorId/:scheduleId/:appointmentDate', async (req, res) => {
+    const { doctorId, scheduleId, appointmentDate } = req.params; // Extract doctorId, scheduleId, and appointmentDate from the request params
+  
+    try {
+      // Ensure doctorId, scheduleId, and appointmentDate are provided
+      if (!doctorId || !scheduleId || !appointmentDate) {
+        return res.status(400).json({ error: 'Missing required parameters.' });
+      }
+  
+ 
+  
+      // Fetch the schedule details to get the day of the week (if needed for further logic)
+      const scheduleDetails = await Schedule.findOne({
+        where: { SCHEDULE_ID: scheduleId, DOCTOR_ID: doctorId },
+      });
+  
+      if (!scheduleDetails) {
+        return res.status(404).json({ error: 'Schedule not found.' });
+      }
+  
+      // Count the number of appointments for the given scheduleId and date
+      const existingAppointments = await Appointment.count({
+        where: {
+          DOCTOR_ID: doctorId,
+          SCHEDULE_ID: scheduleId,
+          APPOINTMENT_DATE: appointmentDate, // Ensure appointments are counted for the same date
+        },
+      });
+  
+      // Check if the number of appointments exceeds the available slots
+    //   if (existingAppointments >= scheduleDetails.SLOT_COUNT) {
+    //     return res.status(400).json({ error: 'No available slots' });
+    //   }
+  
+      // Return the appointment count
+      res.json({ appointmentCount: existingAppointments });
+    } catch (error) {
+      console.error('Error counting appointments:', error);
+      res.status(500).json({ error: 'Failed to count appointments' });
+    }
+  });
 
 
 

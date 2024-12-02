@@ -195,7 +195,7 @@ const getQueueForAppointment = async (patientId) => {
       patientQueueNumber = patientQueue ? patientQueue.QUEUE_NUMBER : 'N/A';
 
       // Fetch department, floor, and room number from the doctor's secretary (assumed to be in the Secretary model)
-      const doctor = appointment.doctor;
+      const doctor = appointment.Doctor;
       const secretary = doctor?.secretary; // Assuming each doctor has a secretary with location details
       const department = secretary?.DEPARTMENT || 'N/A';
       const floor = secretary?.FLOOR_NUMBER || 'N/A';
@@ -226,8 +226,6 @@ const getQueueForAppointment = async (patientId) => {
 };
 
 
-
-  
   // Array to store logged-in patient IDs
 let loggedInPatientIds = new Set();
 
@@ -278,8 +276,5 @@ cron.schedule('* * * * *', async () => {
     }
   });
   
-
-
-router.get
 
 module.exports= router;

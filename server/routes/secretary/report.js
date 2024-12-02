@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const Appointment = require('../../models/appointment');
+
 const Doctor = require('../../models/doctor'); // Import the Doctor model
 const Sequelize = require('../../config/database'); // Import the Sequelize 
 const Queue = require('../../models/queue');
 const Log = require('../../models/log');
 const Feedback = require('../../models/patientFeedback'); // Adjust the path as needed
 const Patient = require('../../models/patient'); // Import Patient model
-const { Op } = require('sequelize');
-
+const { Op } = require('sequelize'); // Import Op
 
 
 // Route to get appointment details along with doctor names
@@ -31,7 +31,8 @@ router.get('/details', async (req, res) => {
                 'SEX',
                 'FIRST_NAME',
                 'LAST_NAME',
-                'APPOINTMENT_DATE'
+                'APPOINTMENT_DATE',
+                'APPOINTMENT_TIME'
 
 
 
@@ -47,8 +48,8 @@ router.get('/details', async (req, res) => {
             address: appointment.ADDRESS,
             sex: appointment.SEX,
             date: appointment.APPOINTMENT_DATE,
-            doctorFullName: `Dr. ${appointment.Doctor.FIRST_NAME} ${appointment.Doctor.LAST_NAME}` // Full name of the doctor
-
+            doctorFullName: `Dr. ${appointment.doctor.FIRST_NAME} ${appointment.doctor.LAST_NAME}`, // Full name of the doctor
+            time: appointment.APPOINTMENT_TIME,
         }));
 
         res.json(response);
@@ -124,6 +125,110 @@ router.get('/feedback', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch feedback' });
     }
 });
+
+
+
+router.post('/monthlyCompletedAppointment', async (req, res) => {
+    try {
+        // Extract month and year from the request body
+        const { startDatr, year } = req.body;
+
+        // Validate inputs
+        if (!month || !year || isNaN(month) || isNaN(year)) {
+            return res.status(400).json({ message: "Valid month and year are required." });
+        }
+
+        // Generate all days in the specified month
+        const daysInMonth = new Date(year, month, 0).getDate(); // Get total days in the month
+        const allDays = Array.from({ length: daysInMonth }, (_, i) => {
+            const day = i + 1;
+            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`; // Format: YYYY-MM-DD
+        });
+
+        // Fetch completed appointments grouped by day
+        const results = await Appointment.findAll({
+            attributes: [
+                'APPOINTMENT_DATE',
+                [Sequelize.fn('COUNT', Sequelize.col('id')), 'completed_count']
+            ],
+            where: {
+                STATUS: 'completed',
+                [Op.and]: [
+                    Sequelize.where(Sequelize.fn('MONTH', Sequelize.col('APPOINTMENT_DATE')), month),
+                    Sequelize.where(Sequelize.fn('YEAR', Sequelize.col('APPOINTMENT_DATE')), year),
+                ]
+            },
+            group: ['APPOINTMENT_DATE'],
+            order: [['APPOINTMENT_DATE', 'ASC']]
+        });
+
+        // Map results to include all days
+        const completedAppointments = results.map(r => ({
+            date: r.APPOINTMENT_DATE,
+            completed_count: parseInt(r.dataValues.completed_count, 10)
+        }));
+
+        const finalResults = allDays.map(date => {
+            const completed = completedAppointments.find(c => c.date === date);
+            return {
+                date,
+                completed_count: completed ? completed.completed_count : 0
+            };
+        });
+
+        // Return the results
+        res.status(200).json(finalResults);
+    } catch (error) {
+        console.error("Error fetching report:", error); // Log full error details for debugging
+        res.status(500).json({ message: "An error occurred while fetching the report.", error: error.message });
+    }
+});
+
+router.post('/completed-appointment', async (req, res) => {
+    const { startDate, endDate } = req.body;
+
+    try {
+        // Fetch completed appointments grouped by date
+        const reportData = await Appointment.findAll({
+            where: {
+                STATUS: 'completed',
+                APPOINTMENT_DATE: {
+                    [Op.between]: [new Date(startDate), new Date(endDate)],
+                },
+            },
+            attributes: [
+                [Sequelize.fn('DATE', Sequelize.col('APPOINTMENT_DATE')), 'date'],
+                [Sequelize.fn('COUNT', Sequelize.col('id')), 'completed_count'],
+            ],
+            group: ['date'],
+        });
+
+        // Map the database result to a date-keyed object for easy lookup
+        const dbData = reportData.reduce((acc, item) => {
+            acc[item.dataValues.date] = item.dataValues.completed_count;
+            return acc;
+        }, {});
+
+        // Generate a complete date range between startDate and endDate
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const completeData = [];
+        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+            const formattedDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            completeData.push({
+                date: formattedDate,
+                completed_count: dbData[formattedDate] || 0, // Fill missing dates with 0
+            });
+        }
+
+        res.json(completeData);
+    } catch (error) {
+        console.error("Error fetching report data:", error.message);
+        res.status(500).json({ message: 'An error occurred while fetching the report.' });
+    }
+});
+
+
 
 
 
