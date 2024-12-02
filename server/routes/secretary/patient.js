@@ -9,44 +9,15 @@ const auth = require('../../middleware/auth');
 
 const router = express.Router();
 
-// router.get('/', auth('Secretary'), async (req, res)=> {
-
-//     try{
-//         const patient = await Patient.findAll({where: {is_deleted: false}});
-//         res.status(200).json(patient);
-//     } catch (error){
-//         res.status(400).json({error: error.message});
-//     }
-// });
-
 router.get('/', auth('Secretary'), async (req, res) => {
+
   try {
-    const patient = await Patient.findAll({
-      where: { is_deleted: false },
-      attributes: ['id', 'CONTACT_NUMBER'], // Specify which fields to include
-    });
+    const patient = await Patient.findAll({ where: { is_deleted: false } });
     res.status(200).json(patient);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
-
-router.get('/patients/:id', auth('Secretary'), async (req, res) => {
-  try {
-    const patient = await Patient.findOne({
-      where: { id: req.params.id, is_deleted: false },
-      attributes: ['id', 'name', 'CONTACT_NUMBER', 'other_fields'], // Include desired fields
-    });
-    if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
-    }
-    res.status(200).json(patient);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-
 
 // Endpoint for daily counts
 router.get('/patients-attended/daily', async (req, res) => {
