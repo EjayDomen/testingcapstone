@@ -10,7 +10,7 @@ const Patient = require('../../models/patient');
 const Services = require('../../models/services');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const { Op, fn, col, where } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 const router = express.Router();
 const { createNotification } = require('../../services/notificationService');
 const { createLog } = require('../../services/logServices');
@@ -392,7 +392,7 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             where: { SCHEDULE_ID: scheduleId },
             transaction
         });
-        
+
         const queueMan = await QueueManagement.findOne({ where: { SCHEDULE_ID: scheduleId } });
 
         if (!queueMan) {
@@ -415,9 +415,6 @@ router.put('/cancelAppointments/:scheduleId', auth('Secretary'), async (req, res
             { STATUS: 'cancelled' },
             { where: { SCHEDULE_ID: scheduleId }, transaction }
         );
-
-        
-
 
         // Create notifications for each cancelled appointment
         for (const appt of appointments) {
@@ -478,7 +475,6 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
     const transactionAppointment = await sequelize.transaction();
 
     try {
-
         const queueManagement = await QueueManagement.findOne({
             where: {
                 SCHEDULE_ID: scheduleId,
@@ -496,10 +492,10 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
             transaction: transactionAppointment // Fixed here to include the transaction
         });
 
-        await schedule.update(
-            { is_actived: false},
-            {where:{SCHEDULE_ID:scheduleId}, transactionQueue}
-        );
+        if (appointmentsToUpdate.length === 0) {
+            await transactionAppointment.rollback();
+            return res.status(404).json({ error: 'No appointments found for the given schedule ID and old date' });
+        }
 
         // Update each appointment to the new date
         for (const appointment of appointmentsToUpdate) {
@@ -553,7 +549,10 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
                 // Attempt to replace placeholders in the message template
                 let message;
                 try {
-                    message = eval('`' + messageTemplate + '`'); // Dynamically replace placeholders like ${doctorName}
+                    message = eval('`' + messageTemplate + '`')
+                        .replace('DOCTOR', doctorName)
+                        .replace('APPOINTMENTDATE', newDate)
+                        .replace('APPOINTMENTTIME', appointmentTime);; // Dynamically replace placeholders like ${doctorName}
                 } catch (error) {
                     console.error('Error creating message from template:', error);
                     // Fallback message if template processing fails
@@ -586,7 +585,7 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
                     if (patient && patient.CONTACT_NUMBER && isValidPhilippineNumber.test(patient.CONTACT_NUMBER)) {
                         // Send SMS
                         await sendSMS(patient.CONTACT_NUMBER, message);
-
+                        console.log(message);
                         // Log successful SMS send
                         await createLog({
                             userId: req.user.id,
