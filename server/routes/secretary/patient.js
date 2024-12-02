@@ -4,36 +4,65 @@ const Appointment = require('../../models/appointment');
 const Schedule = require('../../models/schedule');
 const Patient = require('../../models/patient');
 const Doctors = require('../../models/doctor');
-const {createLog} = require('../../services/logServices');
+const { createLog } = require('../../services/logServices');
 const auth = require('../../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', auth('Secretary'), async (req, res)=> {
+// router.get('/', auth('Secretary'), async (req, res)=> {
 
-    try{
-        const patient = await Patient.findAll({where: {is_deleted: false}});
-        res.status(200).json(patient);
-    } catch (error){
-        res.status(400).json({error: error.message});
-    }
+//     try{
+//         const patient = await Patient.findAll({where: {is_deleted: false}});
+//         res.status(200).json(patient);
+//     } catch (error){
+//         res.status(400).json({error: error.message});
+//     }
+// });
+
+router.get('/', auth('Secretary'), async (req, res) => {
+  try {
+    const patient = await Patient.findAll({
+      where: { is_deleted: false },
+      attributes: ['id', 'CONTACT_NUMBER'], // Specify which fields to include
+    });
+    res.status(200).json(patient);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
+
+router.get('/patients/:id', auth('Secretary'), async (req, res) => {
+  try {
+    const patient = await Patient.findOne({
+      where: { id: req.params.id, is_deleted: false },
+      attributes: ['id', 'name', 'CONTACT_NUMBER', 'other_fields'], // Include desired fields
+    });
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+    res.status(200).json(patient);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+
 
 // Endpoint for daily counts
 router.get('/patients-attended/daily', async (req, res) => {
   try {
-      const data = await Appointment.findAll({
-          attributes: [
-              [sequelize.fn('DATE', sequelize.col('APPOINTMENT_DATE')), 'date'],
-              'status',
-              [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
-          ],
-          group: ['date', 'status'],
-          order: [['date', 'ASC']],
-      });
-      res.status(200).json(data);
+    const data = await Appointment.findAll({
+      attributes: [
+        [sequelize.fn('DATE', sequelize.col('APPOINTMENT_DATE')), 'date'],
+        'status',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
+      ],
+      group: ['date', 'status'],
+      order: [['date', 'ASC']],
+    });
+    res.status(200).json(data);
   } catch (error) {
-      res.status(500).json({ message: 'Error fetching daily data' });
+    res.status(500).json({ message: 'Error fetching daily data' });
   }
 });
 
@@ -42,63 +71,92 @@ router.get('/patients-attended/daily', async (req, res) => {
 // Endpoint for weekly counts
 router.get('/patients-attended/weekly', async (req, res) => {
   try {
-      const data = await Appointment.findAll({
-          attributes: [
-              [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
-              'status',
-              [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
-          ],
-          group: ['week', 'status'],
-          order: [['week', 'ASC']],
-      });
-      res.status(200).json(data);
+    const data = await Appointment.findAll({
+      attributes: [
+        [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
+        'status',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
+      ],
+      group: ['week', 'status'],
+      order: [['week', 'ASC']],
+    });
+    res.status(200).json(data);
   } catch (error) {
-      res.status(500).json({ message: 'Error fetching weekly data' });
+    res.status(500).json({ message: 'Error fetching weekly data' });
   }
 });
 
 // Endpoint for weekly counts
 router.get('/patients-attended/weekly', async (req, res) => {
   try {
-      const data = await Appointment.findAll({
-          attributes: [
-              [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
-              'status',
-              [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
-          ],
-          group: ['week', 'status'],
-          order: [['week', 'ASC']],
-      });
-      res.status(200).json(data);
+    const data = await Appointment.findAll({
+      attributes: [
+        [sequelize.fn('DATE_TRUNC', 'week', sequelize.col('APPOINTMENT_DATE')), 'week'],
+        'status',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'appointmentCount'],  // Counting appointments
+      ],
+      group: ['week', 'status'],
+      order: [['week', 'ASC']],
+    });
+    res.status(200).json(data);
   } catch (error) {
-      res.status(500).json({ message: 'Error fetching weekly data' });
+    res.status(500).json({ message: 'Error fetching weekly data' });
   }
 });
 
-  
-  // Endpoint to get today's appointment count
-  router.get('/patients-attended/today', async (req, res) => {
-    try {
-      const data = await Appointment.findAll({
-        attributes: [
-          [sequelize.fn('DATE', sequelize.col('APPOINTMENT_DATE')), 'date'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'patientCount'],
-        ],
-        where: {
-          status: 'completed',
-          APPOINTMENT_DATE: { [Op.eq]: sequelize.fn('CURDATE') },
-        },
-      });
-      res.status(200).json(data);
-    } catch (error) {
-      res.status(500).json({ message: 'Error fetching today\'s data' });
-    }
-  });
-  
+
+// Endpoint to get today's appointment count
+router.get('/patients-attended/today', async (req, res) => {
+  try {
+    const data = await Appointment.findAll({
+      attributes: [
+        [sequelize.fn('DATE', sequelize.col('APPOINTMENT_DATE')), 'date'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'patientCount'],
+      ],
+      where: {
+        status: 'completed',
+        APPOINTMENT_DATE: { [Op.eq]: sequelize.fn('CURDATE') },
+      },
+    });
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching today\'s data' });
+  }
+});
+
 // Endpoint to update patient information, excluding email and password
 router.put('/update/:id', auth('Secretary'), async (req, res) => {
   const { id } = req.params;
   const {
+    FIRST_NAME,
+    MIDDLE_NAME,
+    LAST_NAME,
+    EMAIL,
+    CONTACT_NUMBER,
+    ADDRESS,
+    SEX,
+    AGE,
+    BIRTHDAY,
+    USER_LEVEL_ID,
+    VERIFIED,
+    FIRST_DOSE_BRAND,
+    SECOND_DOSE_BRAND,
+    BOOSTER_BRAND,
+    FIRST_DOSE_DATE,
+    SECOND_DOSE_DATE,
+    BOOSTER_DATE
+  } = req.body;
+
+  try {
+    // Fetch the patient by ID
+    const patient = await Patient.findByPk(id);
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient not found' });
+    }
+
+    // Update patient details, excluding email and password
+    await patient.update({
       FIRST_NAME,
       MIDDLE_NAME,
       LAST_NAME,
@@ -116,41 +174,12 @@ router.put('/update/:id', auth('Secretary'), async (req, res) => {
       FIRST_DOSE_DATE,
       SECOND_DOSE_DATE,
       BOOSTER_DATE
-  } = req.body;
+    });
 
-  try {
-      // Fetch the patient by ID
-      const patient = await Patient.findByPk(id);
-      
-      if (!patient) {
-          return res.status(404).json({ message: 'Patient not found' });
-      }
-
-      // Update patient details, excluding email and password
-      await patient.update({
-          FIRST_NAME,
-          MIDDLE_NAME,
-          LAST_NAME,
-          EMAIL,
-          CONTACT_NUMBER,
-          ADDRESS,
-          SEX,
-          AGE,
-          BIRTHDAY,
-          USER_LEVEL_ID,
-          VERIFIED,
-          FIRST_DOSE_BRAND,
-          SECOND_DOSE_BRAND,
-          BOOSTER_BRAND,
-          FIRST_DOSE_DATE,
-          SECOND_DOSE_DATE,
-          BOOSTER_DATE
-      });
-
-      res.status(200).json({ message: 'Patient information updated successfully', patient });
+    res.status(200).json({ message: 'Patient information updated successfully', patient });
   } catch (error) {
-      console.error('Error updating patient information:', error);
-      res.status(500).json({ message: 'Internal server error' });
+    console.error('Error updating patient information:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
@@ -179,18 +208,18 @@ router.delete('/delete/:id', auth('Secretary'), async (req, res) => {
 // Display archived doctors
 router.get('/archivedDoctor', auth('Secretary'), async (req, res) => {
   try {
-      const archivedDoctors = await Doctors.findAll({
-          where: { is_deleted: true }
-      });
+    const archivedDoctors = await Doctors.findAll({
+      where: { is_deleted: true }
+    });
 
-      if (archivedDoctors.length === 0) {
-          return res.status(404).json({ message: 'No archived doctors found' });
-      }
+    if (archivedDoctors.length === 0) {
+      return res.status(404).json({ message: 'No archived doctors found' });
+    }
 
-      res.status(200).json(archivedDoctors);
+    res.status(200).json(archivedDoctors);
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal server error' });
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -199,39 +228,39 @@ router.put('/restoreDoctor/:id', auth('Secretary'), async (req, res) => {
   const { id } = req.params; // Doctor ID
 
   try {
-      // Begin transaction for restoring doctor and associated schedules
-      await sequelize.transaction(async (t) => {
-          // Restore associated schedules first
-          await Schedule.update({
-              is_deleted: false
-          }, {
-              where: { DOCTOR_ID: id },
-              transaction: t
-          });
-
-          // Restore the doctor
-          const doctorRestored = await Doctors.update({
-              is_deleted: false
-          }, {
-              where: { id: id },
-              transaction: t
-          });
-
-          // If no doctor was restored, send a 404 response
-          if (!doctorRestored) {
-              return res.status(404).json({ error: 'Doctor not found!' });
-          }
+    // Begin transaction for restoring doctor and associated schedules
+    await sequelize.transaction(async (t) => {
+      // Restore associated schedules first
+      await Schedule.update({
+        is_deleted: false
+      }, {
+        where: { DOCTOR_ID: id },
+        transaction: t
       });
 
-      await createLog({
-          userId: req.user.id,
-          userType: 'Secretary',
-          action: `Restored doctor and associated schedule for doctor_id: ${id}.`
+      // Restore the doctor
+      const doctorRestored = await Doctors.update({
+        is_deleted: false
+      }, {
+        where: { id: id },
+        transaction: t
       });
-      res.status(200).json({ message: 'Doctor and associated schedules restored successfully' });
+
+      // If no doctor was restored, send a 404 response
+      if (!doctorRestored) {
+        return res.status(404).json({ error: 'Doctor not found!' });
+      }
+    });
+
+    await createLog({
+      userId: req.user.id,
+      userType: 'Secretary',
+      action: `Restored doctor and associated schedule for doctor_id: ${id}.`
+    });
+    res.status(200).json({ message: 'Doctor and associated schedules restored successfully' });
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Internal server error' });
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

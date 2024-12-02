@@ -36,7 +36,7 @@ router.get('/conversations', auth('Secretary'), async (req, res) => {
     // Fetch patient details
     const patients = await Patient.findAll({
       where: { id: patientIds },
-      attributes: ['id', 'FIRST_NAME', 'LAST_NAME'],
+      attributes: ['id', 'FIRST_NAME', 'LAST_NAME', 'CONTACT_NUMBER'],
       raw: true,
     });
 
@@ -52,6 +52,7 @@ router.get('/conversations', auth('Secretary'), async (req, res) => {
       return {
         patientId: msg.sender_id,
         patientName: `${patient.FIRST_NAME} ${patient.LAST_NAME}`,
+        patientContactNum: `${patient.CONTACT_NUMBER}`,
         lastMessage: msg.content,
         timestamp: msg.timestamp,
       };
