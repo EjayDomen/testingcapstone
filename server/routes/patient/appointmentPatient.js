@@ -90,6 +90,7 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
             where: {
                 DOCTOR_ID: doctorId,
                 SCHEDULE_ID: scheduleId,
+                APPOINTMENT_DATE: appointmentDate,
             }
         });
 
