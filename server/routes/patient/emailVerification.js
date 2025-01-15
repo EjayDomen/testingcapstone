@@ -1,33 +1,23 @@
 const express = require('express');
-
-
 const randomString = require('randomstring');
 const nodeMailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
-
-
-
-
 const router = express.Router();
-
 const OtpCache = {};
 
 function generateOTP() {
     const otp = randomString.generate({ length: 4, charset: 'numeric' });
-    console.log('Generated OTP inside function:', otp); // Log the OTP directly
     return otp;
 }
-
-
 
 async function sendOTP(email, otp) {
     try {
         // Configure the transporter
         const transporter = nodeMailer.createTransport({
-            service: 'Gmail', // Example service
+            service: 'Gmail',
             auth: {
                 user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS, // Use environment variables for security
+                pass: process.env.EMAIL_PASS,
             },
         });
 
@@ -53,12 +43,11 @@ async function sendOTP(email, otp) {
 
         // Send the email
         const info = await transporter.sendMail(mailOptions);
-
         console.log(`OTP sent to ${email}: ${info.response}`);
-        return true; // Return success status
+        return true;
     } catch (error) {
         console.error('Error sending OTP:', error);
-        return false; // Return failure status
+        return false;
     }
 }
 
@@ -109,9 +98,9 @@ router.post('/verify-otp', async (req, res) => {
         }
 
         // Check if OTP is expired (optional)
-        const isExpired = (Date.now() - createdAt) > 5 * 60 * 1000; // 5 minutes in milliseconds
+        const isExpired = (Date.now() - createdAt) > 5 * 60 * 1000;
         if (isExpired) {
-            delete OtpCache[email]; // Remove expired OTP
+            delete OtpCache[email];
             return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
         }
 
@@ -124,29 +113,24 @@ router.post('/verify-otp', async (req, res) => {
     }
 });
 
-// Existing code...
-
-// Endpoint to resend OTP
-// Endpoint to resend OTP
 router.post('/resend-otp', async (req, res) => {
     const { email } = req.body;
 
-    console.log("Current OtpCache:", OtpCache); // Log cache contents before check
-    // Check if the OTP exists for this email
+    console.log("Current OtpCache:", OtpCache);
     if (OtpCache.hasOwnProperty(email)) {
         return res.status(400).json({ message: 'OTP not found for this email. Please request a new OTP.' });
     }
 
     // Generate a new OTP
-    const newOtp = generateOTP(); // Generate a new OTP
+    const newOtp = generateOTP();
     const otpHash = await bcrypt.hash(newOtp, 10); // Hash the new OTP
 
     // Update the OTPCache with the new OTP hash
     OtpCache[email] = { otpHash, createdAt: Date.now() };
 
     // Send the new OTP
-    sendOTP(email, newOtp); // Send the plain new OTP
-    console.log('Resent OTP:', newOtp); // Log the newly generated OTP
+    sendOTP(email, newOtp);
+    console.log('Resent OTP:', newOtp);
 
     res.status(200).json({ message: 'OTP resent successfully.' });
 });

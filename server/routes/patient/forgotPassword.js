@@ -25,10 +25,8 @@ router.post('/find-patient', async (req, res) => {
         });
 
         if (existingPatient) {
-            // If a patient is found, respond with a message
             res.status(200).json({ message: 'A patient with this email or contact number already exists.' });
         } else {
-            // If no patient is found, indicate that registration can continue
             res.status(404).json({ message: 'No existing patient with this email or contact number.' });
         }
     } catch (error) {

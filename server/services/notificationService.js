@@ -51,9 +51,6 @@ const fetchNotifications = async ({ USER_ID, USER_TYPE, limit = 10 }) => {
   }
 };
 
-
-
-
 // Function to update a notification's status
 const updateNotificationStatus = async (notificationId, status) => {
   try {

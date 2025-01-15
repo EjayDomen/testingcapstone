@@ -63,7 +63,7 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
                 DOCTOR_ID: doctorId
             }
         });
-        
+
         if (!scheduleDetails) {
             await transaction.rollback();
             return res.status(404).json({ error: 'Schedule not found' });
@@ -164,13 +164,8 @@ router.post('/createAppointment', auth('Patient'), async (req, res) => {
     }
 });
 
-
-
-
 //completed should not be excluded in end point, it should be filterize in frontend
-
 // View appointments for the logged-in patient along with doctor and queue details
-
 router.get('/viewAppointments', auth('Patient'), async (req, res) => {
     const patientId = req.user.id;
 
@@ -190,7 +185,7 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
             ],
             group: ['appointments.id'], // Group by the appointment's primary key
         });
-        
+
 
         if (patientAppointments.length === 0) {
             return res.status(404).json({ message: 'No active appointments found for this patient.' });
@@ -201,8 +196,8 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
             const doctorName = doctor
                 ? `${doctor.FIRST_NAME} ${doctor.LAST_NAME}${doctor.HEALTH_PROFESSIONAL_ACRONYM ? `, ${doctor.HEALTH_PROFESSIONAL_ACRONYM}` : ''}`
                 : 'N/A';
-            
-                const queueNumber = appointment.queue ? appointment.queue.QUEUE_NUMBER : '0'; // Default to '0' if no queue exists
+
+            const queueNumber = appointment.queue ? appointment.queue.QUEUE_NUMBER : '0'; // Default to '0' if no queue exists
 
 
             return {
@@ -219,49 +214,44 @@ router.get('/viewAppointments', auth('Patient'), async (req, res) => {
     }
 });
 
-
-
-
-
 router.post('/:appointmentId/cancel', auth('Patient'), async (req, res) => {
     const { appointmentId } = req.params;
     try {
-      // Find the appointment to cancel
-      const Appointment = await appointment.findByPk(appointmentId);
-      if (!appointment) {
-        return res.status(404).json({ message: 'Appointment not found' });
-      }
-  
-      // Check if the appointment is already canceled
-      if (Appointment.STATUS.toLowerCase() === 'cancelled') {
-        return res.status(400).json({ message: 'The appointment is already cancelled.' });
-    }
-      // Update appointment status to 'canceled'
-      Appointment.STATUS = 'cancelled';
-      await Appointment.save();
-  
-      // Create a new notification for the secretary dashboard
-      const notification = await createNotification({
-        message: `Appointment for ${Appointment.FIRST_NAME} ${Appointment.LAST_NAME} on ${Appointment.APPOINTMENT_DATE} at ${Appointment.APPOINTMENT_TIME} was canceled.`,
-        ENTITY_ID: appointmentId,
-        status: 'unread',
-        userId: Appointment.PATIENT_ID,
-        ENTITY_TYPE: 'Appointment',
-        USER_TYPE: 'Patient'});
-  
+        // Find the appointment to cancel
+        const Appointment = await appointment.findByPk(appointmentId);
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        // Check if the appointment is already canceled
+        if (Appointment.STATUS.toLowerCase() === 'cancelled') {
+            return res.status(400).json({ message: 'The appointment is already cancelled.' });
+        }
+        // Update appointment status to 'canceled'
+        Appointment.STATUS = 'cancelled';
+        await Appointment.save();
+
+        // Create a new notification for the secretary dashboard
+        const notification = await createNotification({
+            message: `Appointment for ${Appointment.FIRST_NAME} ${Appointment.LAST_NAME} on ${Appointment.APPOINTMENT_DATE} at ${Appointment.APPOINTMENT_TIME} was canceled.`,
+            ENTITY_ID: appointmentId,
+            status: 'unread',
+            userId: Appointment.PATIENT_ID,
+            ENTITY_TYPE: 'Appointment',
+            USER_TYPE: 'Patient'
+        });
+
         console.log('Notification created:', notification);
         res.status(200).json({ message: 'Notification created', notification });
     } catch (error) {
-      console.error('Error canceling appointment:', error);
-      res.status(500).json({ message: 'Internal server error' });
+        console.error('Error canceling appointment:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-  });
-
-  
+});
 
 // Route to create patient feedback
 router.post('/feedback', auth('Patient'), async (req, res) => {
-    const { rating = 0, comments='n/a' } = req.body;
+    const { rating = 0, comments = 'n/a' } = req.body;
     const patientId = req.user.id;
 
     try {

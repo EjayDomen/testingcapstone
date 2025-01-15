@@ -104,7 +104,6 @@ router.get('/conversations/:userId', auth('Patient'), async (req, res) => {
 
     // Map through the conversations to fetch the last message and format the response
     const response = await Promise.all(conversations.map(async (conv) => {
-      // Fetch the last message for the conversation with the secretary
       const lastMessage = await Message.findOne({
         where: {
           sender_id: patientId,

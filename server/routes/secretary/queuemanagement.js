@@ -1,30 +1,30 @@
 const express = require('express');
-const sequelize = require('../../config/database'); // Import the Sequelize instance
+const sequelize = require('../../config/database');
 const Appointment = require('../../models/appointment');
 const QueueManagement = require('../../models/queueManagement');
 const Queue = require('../../models/queue');
 const Schedule = require('../../models/schedule');
-const Doctor = require('../../models/doctor'); // Import the Doctor model
+const Doctor = require('../../models/doctor');
 const Secretary = require('../../models/secretary');
 const auth = require('../../middleware/auth');
-const cron = require('node-cron'); // Import node-cron
+const cron = require('node-cron');
 const router = express.Router();
 const { createNotification } = require('../../services/notificationService');
 const { formatInTimeZone } = require('date-fns-tz');
-const {createLog} = require('../../services/logServices');
+const { createLog } = require('../../services/logServices');
 
 
 cron.schedule('00 00 * * *', async () => {
     console.log('Running a daily check to create queues...');
     try {
-      await createQueuesForWeek();
+        await createQueuesForWeek();
     } catch (error) {
-      console.error('Error creating queues:', error);
+        console.error('Error creating queues:', error);
     }
-  }, {
+}, {
     scheduled: true,
     timezone: "Asia/Manila" // Set to Manila timezone
-  });
+});
 
 
 
@@ -38,7 +38,7 @@ async function getSecretaryId() {
 async function createQueuesForWeek() {
     // Set the desired time zone
     const timeZone = 'Asia/Manila'; // or '+08:00'
-    
+
     // Get the current date in the specified time zone
     const today = new Date();
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -65,7 +65,7 @@ async function createQueuesForWeek() {
 
             // Format the current date in the specified time zone
             const formattedDate = formatInTimeZone(currentDate, timeZone, 'yyyy-MM-dd');
-            
+
             // Get the day of the week name
             const dayOfWeek = currentDate.getDay();
             const dayName = daysOfWeek[dayOfWeek];
@@ -86,7 +86,7 @@ async function createQueuesForWeek() {
                 userId: 'System',
                 userType: 'System',
                 action: `Created queues for a week.`
-              }); 
+            });
         }
     } catch (error) {
         console.error('Error automating queue creation for the week:', error);
@@ -151,7 +151,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
     const transaction = await sequelize.transaction();
     try {
         // Check if the schedule with the given scheduleId exists
-        const schedule = await Schedule.findOne({ 
+        const schedule = await Schedule.findOne({
             where: { SCHEDULE_ID: scheduleId, is_deleted: false },
             include: [
                 {
@@ -160,7 +160,8 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
                     attributes: ['FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX']
                 }
             ],
-             transaction });
+            transaction
+        });
 
         // If the schedule doesn't exist, rollback and log the message
         if (!schedule) {
@@ -188,7 +189,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
 
         // Check if the queue management entry already exists
         let queueManagement = await QueueManagement.findOne({
-            where: { SCHEDULE_ID: scheduleId, DATE: date},
+            where: { SCHEDULE_ID: scheduleId, DATE: date },
             transaction
         });
 
@@ -213,11 +214,11 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
         const queueManagementId = queueManagement.id;
 
 
-        const STATUS = 'in-queue';  
+        const STATUS = 'in-queue';
         // Example details to be included in the message
         const doctorName = schedule.Doctor && schedule.Doctor.FIRST_NAME && schedule.Doctor.LAST_NAME
-    ? `Dr. ${schedule.Doctor.FIRST_NAME} ${schedule.Doctor.MIDDLE_NAME ? schedule.Doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${schedule.Doctor.LAST_NAME}${schedule.Doctor.SUFFIX ? ', ' + schedule.Doctor.SUFFIX : ''}`
-    : 'Unknown Doctor';
+            ? `Dr. ${schedule.Doctor.FIRST_NAME} ${schedule.Doctor.MIDDLE_NAME ? schedule.Doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${schedule.Doctor.LAST_NAME}${schedule.Doctor.SUFFIX ? ', ' + schedule.Doctor.SUFFIX : ''}`
+            : 'Unknown Doctor';
 
         const appointmentDate = date; // The date for the queue
         const startTime = schedule.START_TIME;
@@ -233,7 +234,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
                 PROGRESS: 'pending',  // Default value
                 STATUS: 'waiting',    // Default value
                 SERVED: 'no',         // Default value
-                TYPE:'ONLINE'
+                TYPE: 'ONLINE'
             }, { transaction });
 
             const patientMessage = 'The queue for your appointment has already been created. Please proceed to the clinic to obtain your queue number.';
@@ -244,7 +245,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
                 status: 'unread',
                 userId: appointment.PATIENT_ID,
                 USER_TYPE: 'Patient',
-                TYPE:'SUCCESS'
+                TYPE: 'SUCCESS'
             });
         }
 
@@ -261,7 +262,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
             status: 'unread',
             userId: secretaryId,
             USER_TYPE: 'Secretary',
-            TYPE:'SUCCESS'
+            TYPE: 'SUCCESS'
         });
 
         // Update the status of all appointments with the given scheduleId
@@ -295,7 +296,7 @@ async function createOrUpdateQueue(scheduleId, date, res = null) {
             status: 'unread',
             userId: secretaryId,
             USER_TYPE: 'Secretary',
-            TYPE:'FAILED'
+            TYPE: 'FAILED'
         });
         await transaction.rollback();
         if (res) {
@@ -318,7 +319,7 @@ async function updateQueueStatusByQueueNumber(queueNumber, queueManagementId, ne
         });
 
         const appointment = await Appointment.findOne({
-            where:{
+            where: {
                 id: queue.APPOINTMENT_ID
             },
             transaction
@@ -336,7 +337,7 @@ async function updateQueueStatusByQueueNumber(queueNumber, queueManagementId, ne
 
         // Update the status of the found queue
         await queue.update({ STATUS: newStatus }, { transaction });
-        await appointment.update({ STATUS: newStatus}, {transaction});
+        await appointment.update({ STATUS: newStatus }, { transaction });
 
         // Commit the transaction
         await transaction.commit();
@@ -372,11 +373,11 @@ router.post('/createQueue', auth('Secretary'), async (req, res) => {
     try {
         await createOrUpdateQueue(scheduleId, date);
 
-        const schedule = await Schedule.findByPk({where:{id : scheduleId}});
-        const doctor = await Doctor.findByPk({ where: {id: schedule.DOCTOR_ID}});
+        const schedule = await Schedule.findByPk({ where: { id: scheduleId } });
+        const doctor = await Doctor.findByPk({ where: { id: schedule.DOCTOR_ID } });
         const doctorName = doctor && doctor.FIRST_NAME && doctor.LAST_NAME
-        ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
-        : 'Unknown Doctor';
+            ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
+            : 'Unknown Doctor';
         await createNotification({
             message: `Queue successfully created or updated for ${doctorName} on ${date} at ${schedule.START_TIME}.`,
             ENTITY_ID: scheduleId,
@@ -384,7 +385,7 @@ router.post('/createQueue', auth('Secretary'), async (req, res) => {
             status: 'unread',
             userId: secretaryId,
             USER_TYPE: 'Secretary',
-            TYPE:'SUCCESS'
+            TYPE: 'SUCCESS'
         });
         res.status(200).json({
             message: 'Queue created or updated successfully'
@@ -399,7 +400,7 @@ router.post('/createQueue', auth('Secretary'), async (req, res) => {
             status: 'unread',
             userId: secretaryId,
             USER_TYPE: 'Secretary',
-            TYPE:'FAIILED'
+            TYPE: 'FAIILED'
         });
         res.status(500).json({ message: 'Database error', error });
     }
@@ -450,7 +451,7 @@ router.get('/', auth('Secretary'), async (req, res) => {
                         {
                             model: Doctor,
                             as: 'Doctor', // Match this with the alias defined in your model association
-                            attributes: ['id','FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'EXPERTISE', 'HEALTH_PROFESSIONAL_ACRONYM']
+                            attributes: ['id', 'FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX', 'EXPERTISE', 'HEALTH_PROFESSIONAL_ACRONYM']
                         }
                     ]
                 }
@@ -470,9 +471,9 @@ router.get('/', auth('Secretary'), async (req, res) => {
 
             // Access fields correctly
             const doctorName = doctor && doctor.FIRST_NAME && doctor.LAST_NAME
-            ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
-            : 'Unknown Doctor';
-            
+                ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
+                : 'Unknown Doctor';
+
             const time = schedule.START_TIME && schedule.END_TIME
                 ? `${schedule.START_TIME} - ${schedule.END_TIME}`
                 : 'N/A';
@@ -530,7 +531,7 @@ async function manageQueue() {
             const { START_TIME, END_TIME } = schedule;
             const startTime = new Date(`${today}T${START_TIME}`);
             const endTime = new Date(`${today}T${END_TIME}`);
-            
+
             if (now >= startTime && now < endTime) {
                 await QueueManagement.update(
                     { STATUS: 'in-progress' },
@@ -631,8 +632,8 @@ router.get('/today/todayQueue', auth('Secretary'), async (req, res) => {
         const doctor = schedule?.Doctor;
 
         const doctorName = doctor && doctor.FIRST_NAME && doctor.LAST_NAME
-        ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
-        : 'Unknown Doctor';
+            ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
+            : 'Unknown Doctor';
         const specialty = doctor?.EXPERTISE || 'N/A';
         const startTime = schedule?.START_TIME || 'N/A';
         const endTime = schedule?.END_TIME || 'N/A';
@@ -668,7 +669,7 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
     try {
         // Find the specific QueueManagement entry for today
         let queueManagement = await QueueManagement.findOne({
-            where: { DATE: today, STATUS: 'in-progress'},
+            where: { DATE: today, STATUS: 'in-progress' },
             include: [
                 {
                     model: Schedule,
@@ -753,9 +754,9 @@ router.get('/today/CurrentQueueList', auth('Secretary'), async (req, res) => {
         const formattedQueues = queues.map((queue) => ({
             queueNumber: queue.QUEUE_NUMBER,
             patientName: queue.appointment
-            ? `${queue.appointment.FIRST_NAME} ${queue.appointment.MIDDLE_NAME ? queue.appointment.MIDDLE_NAME + ' ' : ''}${queue.appointment.LAST_NAME}${queue.appointment.SUFFIX ? ' ' + queue.appointment.SUFFIX : ''}`
-            : '',
-        
+                ? `${queue.appointment.FIRST_NAME} ${queue.appointment.MIDDLE_NAME ? queue.appointment.MIDDLE_NAME + ' ' : ''}${queue.appointment.LAST_NAME}${queue.appointment.SUFFIX ? ' ' + queue.appointment.SUFFIX : ''}`
+                : '',
+
             status: queue.STATUS,
             age: queue.appointment.AGE || 'N/A',
             address: queue.appointment.ADDRESS || 'NULL',
@@ -821,7 +822,7 @@ router.get('/queue/:qid', auth('Secretary'), async (req, res) => {
             include: [
                 {
                     model: Appointment,
-                    attributes: ['FIRST_NAME', 'MIDDLE_NAME','LAST_NAME', 'SUFFIX'],
+                    attributes: ['FIRST_NAME', 'MIDDLE_NAME', 'LAST_NAME', 'SUFFIX'],
                 },
             ],
             order: [['QUEUE_NUMBER', 'ASC']],
@@ -838,8 +839,8 @@ router.get('/queue/:qid', auth('Secretary'), async (req, res) => {
         const doctor = schedule?.Doctor;
 
         const doctorName = doctor && doctor.FIRST_NAME && doctor.LAST_NAME
-        ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
-        : 'Unknown Doctor';
+            ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
+            : 'Unknown Doctor';
         const specialty = doctor?.EXPERTISE || 'N/A';
         const startTime = schedule?.START_TIME || 'N/A';
         const endTime = schedule?.END_TIME || 'N/A';
@@ -848,8 +849,8 @@ router.get('/queue/:qid', auth('Secretary'), async (req, res) => {
         const formattedQueues = queues.map((queue, index) => ({
             queueNumber: queue.QUEUE_NUMBER,
             patientName: queue.Appointment
-            ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
-            : 'N/A',
+                ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
+                : 'N/A',
             status: queue.STATUS,
         }));
 
@@ -921,8 +922,8 @@ router.get('/queue/all/:qid', auth('Secretary'), async (req, res) => {
         const doctor = schedule?.Doctor;
 
         const doctorName = doctor && doctor.FIRST_NAME && doctor.LAST_NAME
-        ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
-        : 'Unknown Doctor';
+            ? `Dr. ${doctor.FIRST_NAME} ${doctor.MIDDLE_NAME ? doctor.MIDDLE_NAME.charAt(0) + '.' : ''} ${doctor.LAST_NAME}${doctor.SUFFIX ? ', ' + doctor.SUFFIX : ''}`
+            : 'Unknown Doctor';
         const specialty = doctor?.EXPERTISE || 'N/A';
         const startTime = schedule?.START_TIME || 'N/A';
         const endTime = schedule?.END_TIME || 'N/A';
@@ -931,8 +932,8 @@ router.get('/queue/all/:qid', auth('Secretary'), async (req, res) => {
         const formattedQueues = queues.map((queue, index) => ({
             queueNumber: queue.QUEUE_NUMBER,
             patientName: queue.Appointment
-            ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
-            : 'N/A',
+                ? `${queue.Appointment.FIRST_NAME} ${queue.Appointment.MIDDLE_NAME ? queue.Appointment.MIDDLE_NAME + ' ' : ''}${queue.Appointment.LAST_NAME}${queue.Appointment.SUFFIX ? ', ' + queue.Appointment.SUFFIX : ''}`
+                : 'N/A',
             status: queue.STATUS,
             age: queue.Appointment.AGE,
             address: queue.Appointment.ADDRESS || 'NULL',
@@ -944,7 +945,7 @@ router.get('/queue/all/:qid', auth('Secretary'), async (req, res) => {
             userId: req.user.id,
             userType: 'Secretary',
             action: `Viewed the queue list for queue management id: ${queueManagement.id}.`
-          }); 
+        });
         // Send the response with the formatted queues
         res.status(200).json({
             queueManagementId: queueManagement.id,
@@ -967,25 +968,25 @@ router.get('/queue/all/:qid', auth('Secretary'), async (req, res) => {
 router.post('/queue/changeStatus', auth('Secretary'), async (req, res) => {
     const { queueNumber, queueManagementId, newStatus } = req.body;
     const secretary = req.user.id;
-  
+
     try {
 
         if (!secretary) {
             return res.status(403).json({ error: 'Unauthorized: Secretary information not found' });
         }
-      const result = await updateQueueStatusByQueueNumber(queueNumber, queueManagementId, newStatus);
-      res.status(200).json(result); // Corrected line
-      await createLog({
-        userId: secretary,
-        userType: 'Secretary',
-        action: `Updated queue's status for queue number:${queueNumber}, queue management id: ${queueManagementId}.`
-      }); 
+        const result = await updateQueueStatusByQueueNumber(queueNumber, queueManagementId, newStatus);
+        res.status(200).json(result); // Corrected line
+        await createLog({
+            userId: secretary,
+            userType: 'Secretary',
+            action: `Updated queue's status for queue number:${queueNumber}, queue management id: ${queueManagementId}.`
+        });
     } catch (error) {
-      console.error('Error updating queue status:', error);
-      res.status(500).json({ message: 'Failed to update queue status' });
+        console.error('Error updating queue status:', error);
+        res.status(500).json({ message: 'Failed to update queue status' });
     }
-  });
-  
+});
+
 
 
 // Endpoint to manually trigger createQueuesForWeek for testing
@@ -999,7 +1000,7 @@ router.get('/createQueuesForWeek', auth('Secretary'), async (req, res) => {
     }
 });
 
-module.exports= router;
+module.exports = router;
 // module.exports = {
 //     router,
 //     createOrUpdateQueue

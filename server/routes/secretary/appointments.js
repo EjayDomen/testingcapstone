@@ -39,7 +39,6 @@ const sendSMS = async (number, message) => {
 };
 
 
-
 router.post('/joinQueue', auth('Secretary'), async (req, res) => {
     const {
         PATIENT_ID = 'N/A',
@@ -199,10 +198,6 @@ router.post('/joinQueue', auth('Secretary'), async (req, res) => {
     }
 });
 
-
-
-
-
 // show all appointments by schedule ID
 router.get('/patientList/appointmentList/:schedId/:Date', auth('Secretary'), async (req, res) => {
     const { schedId, Date } = req.params;
@@ -360,11 +355,11 @@ router.get('/today/today', auth('Secretary'), async (req, res) => {
             include: [
                 {
                     model: Patient,
-                    attributes: ['FIRST_NAME', 'LAST_NAME', 'CONTACT_NUMBER'], // Assuming these are relevant fields from the Patient model
+                    attributes: ['FIRST_NAME', 'LAST_NAME', 'CONTACT_NUMBER'],
                 }
             ],
             order: [['APPOINTMENT_TIME', 'ASC']], // Order by appointment time in ascending order
-            limit // Limit the number of rows returned
+            limit
         });
 
         await createLog({
@@ -502,7 +497,7 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
             appointment.APPOINTMENT_DATE = newDate; // Change to new date
             await appointment.save({ transaction: transactionAppointment }); // Save with the transaction
             const doctor = await Doctor.findOne({ where: { id: appointment.DOCTOR_ID } });
-            const patient = await Patient.findOne({ where: { id: appointment.PATIENT_ID } }); // Assuming you have a Patient model
+            const patient = await Patient.findOne({ where: { id: appointment.PATIENT_ID } });
 
             try {
                 // Fetch the service with primary key 2
@@ -526,7 +521,7 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
                 }
 
                 // Format the new date
-                const newDateObj = new Date(appointment.APPOINTMENT_DATE); // Ensure this is a valid ISO date
+                const newDateObj = new Date(appointment.APPOINTMENT_DATE);
                 if (isNaN(newDateObj)) {
                     throw new Error(`Invalid NEW_DATE: ${appointment.APPOINTMENT_DATE}`);
                 }
@@ -552,7 +547,7 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
                     message = eval('`' + messageTemplate + '`')
                         .replace('DOCTOR', doctorName)
                         .replace('APPOINTMENTDATE', newDate)
-                        .replace('APPOINTMENTTIME', appointmentTime);; // Dynamically replace placeholders like ${doctorName}
+                        .replace('APPOINTMENTTIME', appointmentTime);;
                 } catch (error) {
                     console.error('Error creating message from template:', error);
                     // Fallback message if template processing fails
@@ -575,9 +570,6 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
 
                 // Send SMS
                 if (patient && patient.CONTACT_NUMBER) {
-
-
-
                     // Define the regular expression for valid Philippine phone numbers
                     // Includes +639xxxxxxxxx, 09xxxxxxxxx, and 9xxxxxxxxx formats
                     const isValidPhilippineNumber = /^(\+639|09|9)\d{9}$/;
@@ -611,19 +603,10 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
                 } else {
                     console.warn(`No phone number found for patient ID: ${appointment.PATIENT_ID}`);
                 }
-
             } catch (error) {
                 console.error('Error processing appointment notification:', error);
             }
-
-
-
-
-
         }
-
-
-
         await createLog({
             userId: req.user.id,
             userType: 'Secretary',
@@ -633,18 +616,14 @@ router.put('/rescheduleAppointments/resched', auth('Secretary'), async (req, res
         queueManagement.DATE = newDate;
         queueManagement.STATUS = 'RESCHEDULED';
         await queueManagement.save({ transaction: transactionQueue });
-
         // Commit the transaction if all updates are successful
-        await transactionAppointment.commit(); // Fixed: commit the appointment transaction
-        await transactionQueue.commit(); // Fixed: commit the queue transaction
-
-
-
+        await transactionAppointment.commit();
+        await transactionQueue.commit();
 
         res.status(200).json({ message: 'Appointments successfully rescheduled', appointments: appointmentsToUpdate, queueManagement });
     } catch (error) {
-        await transactionAppointment.rollback(); // Fixed: rollback the appointment transaction
-        await transactionQueue.rollback(); // Fixed: rollback the queue transaction
+        await transactionAppointment.rollback();
+        await transactionQueue.rollback();
         console.error('Error rescheduling appointments:', error);
         res.status(400).json({ error: error.message });
     }

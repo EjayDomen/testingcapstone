@@ -6,7 +6,7 @@ const randomString = require('randomstring');
 const { format } = require('date-fns-tz');
 
 
-const sequelize = require('../../config/database'); // Import the Sequelize instance
+const sequelize = require('../../config/database');
 const { Op } = require('sequelize');
 const Doctor = require('../../models/doctor');
 const Appointment = require('../../models/appointment');
@@ -28,7 +28,7 @@ const sendSMS = async (number, message) => {
 
 // Define an endpoint for sending SMS
 router.post('/send-sms', async (req, res) => {
-    const { number, message } = req.body;  // Get number and message from request body
+    const { number, message } = req.body;
     sendSMS(number, message);
     res.status(200).send('SMS sent successfully');
 });
@@ -104,7 +104,7 @@ cron.schedule('00 6 * * *', () => {
 // Endpoint to get the SMS message
 router.get('/getTextMessage', async (req, res) => {
     try {
-        const service = await Services.findByPk(1); // Fetch service with ID 1
+        const service = await Services.findByPk(1);
         if (service) {
             res.status(200).json({
                 message: service.description,
@@ -123,9 +123,9 @@ router.get('/getTextMessage', async (req, res) => {
 router.post('/saveTextMessage', async (req, res) => {
     const { message } = req.body;
     try {
-        const service = await Services.findByPk(1); // Find service with ID 1
+        const service = await Services.findByPk(1);
         if (service) {
-            service.description = message; // Update the description field
+            service.description = message;
             await service.save();
             res.status(200).json({ message: 'Message updated successfully' });
         } else {
@@ -141,9 +141,9 @@ router.post('/saveTextMessage', async (req, res) => {
 router.post('/toggleSmsService', async (req, res) => {
     const { is_active } = req.body;
     try {
-        const service = await Services.findByPk(1); // Find service with ID 1
+        const service = await Services.findByPk(1);
         if (service) {
-            service.is_active = is_active; // Update the is_active field
+            service.is_active = is_active;
             await service.save();
             res.status(200).json({ message: `Service status updated to ${is_active}` });
         } else {
@@ -160,7 +160,7 @@ router.post('/toggleSmsService', async (req, res) => {
 // Endpoint to get the SMS message
 router.get('/getTextMessage2', async (req, res) => {
     try {
-        const service = await Services.findByPk(2); // Fetch service with ID 1
+        const service = await Services.findByPk(2);
         if (service) {
             res.status(200).json({
                 message: service.description,
@@ -179,9 +179,9 @@ router.get('/getTextMessage2', async (req, res) => {
 router.post('/saveTextMessage2', async (req, res) => {
     const { message } = req.body;
     try {
-        const service = await Services.findByPk(2); // Find service with ID 1
+        const service = await Services.findByPk(2);
         if (service) {
-            service.description = message; // Update the description field
+            service.description = message;
             await service.save();
             res.status(200).json({ message: 'Message updated successfully' });
         } else {
@@ -194,12 +194,12 @@ router.post('/saveTextMessage2', async (req, res) => {
 });
 
 router.post('/toggleSmsService2', async (req, res) => {
-    const { is_active } = req.body; // Ensure this is correctly received
+    const { is_active } = req.body;
     try {
-        const service = await Services.findByPk(2); // Check if service ID is correct
+        const service = await Services.findByPk(2);
         if (service) {
-            service.is_active = is_active; // Update the field
-            await service.save(); // Save changes to the database
+            service.is_active = is_active;
+            await service.save();
             res.status(200).json({ message: `Service status updated to ${is_active}` });
         } else {
             res.status(404).json({ error: 'Service with ID 2 not found' });
@@ -210,13 +210,6 @@ router.post('/toggleSmsService2', async (req, res) => {
     }
 });
 
-
-
-
-
-
-
-
 const otpStore = {}; // This will store OTPs with phone numbers as keys and expiry timestamps
 
 router.post('/send-otp', async (req, res) => {
@@ -225,7 +218,7 @@ router.post('/send-otp', async (req, res) => {
     try {
 
         const otpCode = randomString.generate({ length: 4, charset: 'numeric' });
-        console.log('Generated OTP inside function:', otpCode); // Log the OTP directly
+        console.log('Generated OTP inside function:', otpCode);
 
 
         // Send OTP via Semaphore
@@ -274,42 +267,10 @@ router.post('/verify-otp', (req, res) => {
 
     // Check if the provided OTP matches the stored one
     if (otpCode === storedOtp) {
-        // OTP is valid, proceed with user verification
-        delete otpStore[recipient]; // Clear OTP after successful verification
+        delete otpStore[recipient];
         return res.json({ message: 'OTP verified successfully!' });
     } else {
         return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
-    }
-});
-
-
-router.post('/send-reminder', async (req, res) => {
-    const { number, message, sendername } = req.body;
-
-    // Validation
-    if (!number || !message) {
-        return res.status(400).json({ error: 'Recipient number and message are required.' });
-    }
-
-    try {
-        // Sending the SMS via Semaphore API
-        const response = await axios.post('https://api.semaphore.co/api/v4/messages', {
-            apikey: 'API_KEY',
-            number,
-            message,
-            sendername: sendername || 'SEMAPHORE',  // Optional sender name
-        });
-
-        res.json({
-            status: 'SMS Sent',
-            data: response.data
-        });
-    } catch (error) {
-        console.error('Error sending SMS:', error.response ? error.response.data : error.message);
-        res.status(500).json({
-            error: 'Failed to send SMS',
-            details: error.response ? error.response.data : error.message
-        });
     }
 });
 
@@ -326,12 +287,12 @@ async function sendSms(phone) {
 
     try {
         const response = await axios.post(url, data);
-        return response.data; // Return the response data
+        return response.data;
     } catch (error) {
         if (error.response) {
-            throw new Error(error.response.data.message); // Throw the error message
+            throw new Error(error.response.data.message);
         } else {
-            throw new Error(error.message); // Handle other errors
+            throw new Error(error.message);
         }
     }
 }

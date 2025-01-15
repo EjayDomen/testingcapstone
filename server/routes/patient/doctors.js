@@ -7,16 +7,14 @@ const router = express.Router();
 const Schedule = require('../../models/schedule');
 const Appointment = require('../../models/appointment');
 
-
-
 // view all doctor
 router.get('/', auth('Patient'), async (req, res) => {
     try {
         const doctors = await Doctors.findAll({
-            where:{ is_deleted: false},
+            where: { is_deleted: false },
             include: [{
-                model: Schedule, // Assuming 'Schedules' is the model associated with Doctors
-                attributes: ['DAY_OF_WEEK', 'START_TIME', 'END_TIME'] // Specify schedule fields to include
+                model: Schedule,
+                attributes: ['DAY_OF_WEEK', 'START_TIME', 'END_TIME']
             }]
         });
         res.status(200).json(doctors);
@@ -34,10 +32,10 @@ router.get('/:doctorId', async (req, res) => {
         const doctor = await Doctors.findOne({
             where: { id: doctorId },
             include: [{
-                model: Secretary, // Assuming you have a Secretary model and association set up
-                attributes: ['id'], // Fetch only the secretary ID
+                model: Secretary,
+                attributes: ['id'],
             }],
-            attributes: ['FIRST_NAME', 'LAST_NAME', 'SECRETARY_ID'] // Fetch doctor's name and secretary ID
+            attributes: ['FIRST_NAME', 'LAST_NAME', 'SECRETARY_ID']
         });
 
         if (!doctor || !doctor.SECRETARY_ID) {
@@ -60,7 +58,7 @@ router.get('/:doctorId', async (req, res) => {
 const dayOfWeekToNumber = (day) => {
     if (typeof day !== 'string') {
         console.error("Invalid or missing day:", day);
-        return null; // Return null when input is not a valid string
+        return null;
     }
     const days = {
         'sunday': 0,
@@ -102,19 +100,18 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
 
         // Format the fetched schedules
         const formattedSchedules = schedules.map(schedule => {
-            // Convert the day_of_week string to a numeric value
             const dayNumber = dayOfWeekToNumber(schedule.DAY_OF_WEEK);
-            
+
             // If the conversion fails (invalid day), we can skip or handle this accordingly
             if (dayNumber === null) {
                 console.error(`Invalid day_of_week value: ${schedule.DAY_OF_WEEK}`);
-                return null; // Optionally filter out invalid entries
+                return null;
             }
 
             return {
                 schedule_id: schedule.SCHEDULE_ID,
                 doctor_id: doctorId,
-                day_of_week: [dayNumber], // Using the converted numeric day
+                day_of_week: [dayNumber],
                 start_time: schedule.START_TIME,
                 end_time: schedule.END_TIME,
                 slot_count: schedule.SLOT_COUNT,
@@ -134,45 +131,40 @@ router.get('/getDoctorSchedule/:doctorId', auth('Patient'), async (req, res) => 
 // Endpoint to get the count of appointments for a specific schedule on a specific date
 router.get('/appointments/count/:doctorId/:scheduleId/:appointmentDate', async (req, res) => {
     const { doctorId, scheduleId, appointmentDate } = req.params; // Extract doctorId, scheduleId, and appointmentDate from the request params
-  
+
     try {
-      // Ensure doctorId, scheduleId, and appointmentDate are provided
-      if (!doctorId || !scheduleId || !appointmentDate) {
-        return res.status(400).json({ error: 'Missing required parameters.' });
-      }
-  
- 
-  
-      // Fetch the schedule details to get the day of the week (if needed for further logic)
-      const scheduleDetails = await Schedule.findOne({
-        where: { SCHEDULE_ID: scheduleId, DOCTOR_ID: doctorId },
-      });
-  
-      if (!scheduleDetails) {
-        return res.status(404).json({ error: 'Schedule not found.' });
-      }
-  
-      // Count the number of appointments for the given scheduleId and date
-      const existingAppointments = await Appointment.count({
-        where: {
-          DOCTOR_ID: doctorId,
-          SCHEDULE_ID: scheduleId,
-          APPOINTMENT_DATE: appointmentDate, // Ensure appointments are counted for the same date
-        },
-      });
-  
-      // Check if the number of appointments exceeds the available slots
-    //   if (existingAppointments >= scheduleDetails.SLOT_COUNT) {
-    //     return res.status(400).json({ error: 'No available slots' });
-    //   }
-  
-      // Return the appointment count
-      res.json({ appointmentCount: existingAppointments });
+        // Ensure doctorId, scheduleId, and appointmentDate are provided
+        if (!doctorId || !scheduleId || !appointmentDate) {
+            return res.status(400).json({ error: 'Missing required parameters.' });
+        }
+
+
+
+        // Fetch the schedule details to get the day of the week (if needed for further logic)
+        const scheduleDetails = await Schedule.findOne({
+            where: { SCHEDULE_ID: scheduleId, DOCTOR_ID: doctorId },
+        });
+
+        if (!scheduleDetails) {
+            return res.status(404).json({ error: 'Schedule not found.' });
+        }
+
+        // Count the number of appointments for the given scheduleId and date
+        const existingAppointments = await Appointment.count({
+            where: {
+                DOCTOR_ID: doctorId,
+                SCHEDULE_ID: scheduleId,
+                APPOINTMENT_DATE: appointmentDate,
+            },
+        });
+
+        // Return the appointment count
+        res.json({ appointmentCount: existingAppointments });
     } catch (error) {
-      console.error('Error counting appointments:', error);
-      res.status(500).json({ error: 'Failed to count appointments' });
+        console.error('Error counting appointments:', error);
+        res.status(500).json({ error: 'Failed to count appointments' });
     }
-  });
+});
 
 
 

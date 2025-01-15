@@ -33,7 +33,7 @@ router.get('/', auth('Secretary'), async (req, res) => {
 router.put('/profileUpdate', auth('Secretary'), async (req, res) => {
     const id = req.user.id;
     const { FIRST_NAME, MIDDLE_NAME, LAST_NAME, PASSWORD, CONTACT_NUMBER, SCHEDULE, ROOMNUMBER, DATE_OF_BIRTH, GENDER, AGE, NOTES, EMAIL, DEPARTMENT } = req.body;
-    
+
     try {
         // Find the secretary by their ID
         const secretary = await Secretary.findOne({ where: { id } });
@@ -61,10 +61,10 @@ router.put('/profileUpdate', auth('Secretary'), async (req, res) => {
         secretary.EMAIL = EMAIL;
         secretary.DEPARTMENT = DEPARTMENT;
         secretary.CONTACT_NUMBER = CONTACT_NUMBER;
-        
+
         // Save the updated secretary
         await secretary.save();
-        
+
         res.status(200).json(secretary);
     } catch (error) {
         res.status(400).json({ error: error.message });
